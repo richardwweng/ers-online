@@ -180,7 +180,7 @@ export function isValidSlap(pile: Card[], settings: Settings): boolean {
 
   if (settings.doubles && top.rank === second.rank) return true;
   if (settings.sandwich && third && top.rank === third.rank) return true;
-  if (settings.topBottom && n >= 3 && top.rank === pile[0].rank) return true;
+  if (settings.topBottom && n >= 2 && top.rank === pile[0].rank) return true;
   if (settings.tens) {
     const a = TEN_VALUES[top.rank];
     const b = TEN_VALUES[second.rank];
