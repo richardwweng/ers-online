@@ -47,9 +47,9 @@ function CrossIcon() {
   );
 }
 
-type Props = { room: RoomState; game: GameView; myId: string; isHost: boolean };
+type Props = { room: RoomState; game: GameView; myId: string };
 
-export default function Table({ room, game, myId, isHost }: Props) {
+export default function Table({ room, game, myId }: Props) {
   const connected = useConnected();
   const [copied, setCopied] = useState(false);
 
@@ -285,19 +285,6 @@ export default function Table({ room, game, myId, isHost }: Props) {
                 PILE {game.pileCount} · BURNED {game.burnedCount}
               </div>
             </div>
-
-            {room.phase === "finished" && (
-              <div className="felt-over">
-                <h2>{game.winner ?? "Nobody"} wins</h2>
-                {isHost ? (
-                  <button type="button" className="btn btn-primary btn-xl" onClick={() => socket.emit("backToLobby")}>
-                    Back to lobby
-                  </button>
-                ) : (
-                  <p className="dim">Waiting for the host…</p>
-                )}
-              </div>
-            )}
           </div>
 
           {/* Phone: your seat below the table */}

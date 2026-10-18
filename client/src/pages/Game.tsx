@@ -6,6 +6,7 @@ import Table from "../components/Table";
 import { Brand } from "../components/ui";
 import JoinScreen from "./JoinScreen";
 import Lobby from "./Lobby";
+import GameOver from "./GameOver";
 import type { JoinReply, RoomState } from "../types";
 import "./Pages.css";
 
@@ -136,11 +137,14 @@ export default function Game() {
   if (!myId) return <JoinScreen roomId={roomId} error={error} onJoin={join} />;
   if (!room) return loading;
 
-  const isHost = room.hostId === myId;
+  // After a game: winner, stats, play again
+  if (room.phase === "finished" && room.game) {
+    return <GameOver room={room} game={room.game} myId={myId} onLeave={leave} />;
+  }
 
-  // The table (during and after a game)
-  if (room.phase !== "lobby" && room.game) {
-    return <Table room={room} game={room.game} myId={myId} isHost={isHost} />;
+  // During a game: the table
+  if (room.phase === "playing" && room.game) {
+    return <Table room={room} game={room.game} myId={myId} />;
   }
 
   return <Lobby room={room} myId={myId} onLeave={leave} />;

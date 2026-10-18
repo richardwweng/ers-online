@@ -19,7 +19,17 @@ export type Settings = {
 // eliminated: done for this game
 export type SeatStatus = "active" | "out" | "eliminated";
 
-export type Seat = { personId: string; name: string; hand: Card[]; status: SeatStatus };
+// Numbers for the game-over screen
+export type SeatStats = {
+  pilesWon: number;
+  wrongSlaps: number;
+  fastestWinMs: number | null; // quickest reaction time on a slap that won a pile
+  outAtPile: number | null; // which pile they went out on
+  outOrder: number | null; // 1 = first player out, 2 = second, ...
+  forfeited: boolean;
+};
+
+export type Seat = { personId: string; name: string; hand: Card[]; status: SeatStatus; stats: SeatStats };
 
 // won: fastest correct slap. late: correct, but someone was faster. wrong: burned a card.
 export type SlapEntry = { name: string; ms: number; result: "won" | "late" | "wrong" };
@@ -33,6 +43,10 @@ export type GameState = {
   awardTo: number | null; // seat about to collect the pile after a failed challenge
   slapHistory: SlapEntry[];
   winner: number | null; // seat index of the winner, once the game is over
+  pilesPlayed: number; // how many piles have been won so far
+  outCount: number; // how many players are out so far
+  startedAt: number; // when the game started (milliseconds)
+  endedAt: number | null; // when someone won
 };
 
 // ---------- Setup ----------
@@ -67,7 +81,13 @@ function shuffle<T>(items: T[]): T[] {
 
 export function createGame(people: { id: string; name: string }[]): GameState {
   const deck = shuffle(makeDeck());
-  const seats: Seat[] = people.map((p) => ({ personId: p.id, name: p.name, hand: [], status: "active" }));
+  const seats: Seat[] = people.map((p) => ({
+    personId: p.id,
+    name: p.name,
+    hand: [],
+    status: "active",
+    stats: { pilesWon: 0, wrongSlaps: 0, fastestWinMs: null, outAtPile: null, outOrder: null, forfeited: false },
+  }));
 
   // Deal one card at a time around the table
   deck.forEach((card, i) => seats[i % seats.length].hand.push(card));
@@ -81,6 +101,10 @@ export function createGame(people: { id: string; name: string }[]): GameState {
     awardTo: null,
     slapHistory: [],
     winner: null,
+    pilesPlayed: 0,
+    outCount: 0,
+    startedAt: Date.now(),
+    endedAt: null,
   };
 }
 
@@ -126,7 +150,17 @@ function checkWinner(game: GameState) {
   if (alive.length === 1) {
     game.winner = alive[0].index;
     game.awardTo = null;
+    game.endedAt = Date.now();
   }
+}
+
+// Mark a seat as out for good, and note when it happened
+function markEliminated(game: GameState, seat: number, atPile: number) {
+  const s = game.seats[seat];
+  s.status = "eliminated";
+  game.outCount += 1;
+  s.stats.outOrder = game.outCount;
+  s.stats.outAtPile = atPile;
 }
 
 // Clean up after a seat is eliminated (wrong slap with no cards, or forfeit)
@@ -196,6 +230,8 @@ export function isValidSlap(pile: Card[], settings: Settings): boolean {
 // A seat collects the whole pile (from a correct slap or a won challenge)
 export function awardPile(game: GameState, seat: number) {
   const s = game.seats[seat];
+  game.pilesPlayed += 1;
+  s.stats.pilesWon += 1;
   s.hand.push(...game.burned, ...game.pile); // burned cards first, like flipping a real pile over
   game.pile = [];
   game.burned = [];
@@ -204,9 +240,9 @@ export function awardPile(game: GameState, seat: number) {
   s.status = "active";
 
   // Anyone who ran out during this pile has now missed their chance to slap back in
-  for (const other of game.seats) {
-    if (other !== s && other.status === "out") other.status = "eliminated";
-  }
+  game.seats.forEach((other, i) => {
+    if (other !== s && other.status === "out") markEliminated(game, i, game.pilesPlayed);
+  });
 
   game.turn = seat; // the winner leads the next pile
   checkWinner(game);
@@ -215,10 +251,11 @@ export function awardPile(game: GameState, seat: number) {
 // A seat slapped when they shouldn't have
 export function wrongSlap(game: GameState, seat: number) {
   const s = game.seats[seat];
+  s.stats.wrongSlaps += 1;
 
   if (s.hand.length === 0) {
     // Nothing to burn: they're out for good
-    s.status = "eliminated";
+    markEliminated(game, seat, game.pilesPlayed + 1);
     onEliminated(game, seat);
     return;
   }
@@ -230,12 +267,13 @@ export function wrongSlap(game: GameState, seat: number) {
   }
 }
 
-// A seat disconnected and didn't come back in time
+// A seat gave up, or disconnected and didn't come back in time
 export function forfeit(game: GameState, seat: number) {
   const s = game.seats[seat];
   if (s.status === "eliminated") return;
   game.burned.push(...s.hand); // their cards go under the pile for the next winner
   s.hand = [];
-  s.status = "eliminated";
+  s.stats.forfeited = true;
+  markEliminated(game, seat, game.pilesPlayed + 1);
   onEliminated(game, seat);
 }

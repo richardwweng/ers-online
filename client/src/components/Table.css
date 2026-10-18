@@ -70,11 +70,6 @@
   color: rgba(233, 239, 234, 0.5); font-size: 13px;
 }
 .pile-info { font-size: 12px; color: #a8c2b4; letter-spacing: 0.3px; }
-.felt-over {
-  position: absolute; inset: 0; z-index: 2; background: rgba(6, 14, 11, 0.75);
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; text-align: center;
-}
-.felt-over h2 { margin: 0; font-size: 48px; font-weight: 800; }
 
 /* ---------- Cards on the pile (base card styles live in Card.css) ---------- */
 .pile .card { position: absolute; top: 16px; left: calc(50% - 60px); transform: translateX(var(--x)) rotate(var(--r)); animation: drop 0.18s ease-out; }
@@ -122,7 +117,6 @@
   .felt { height: 330px; border-width: 8px; border-radius: 32px; }
   .felt-center { gap: 8px; }
   .pile { transform: scale(0.82); }
-  .felt-over h2 { font-size: 34px; }
   .tp-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .btn-xl { min-width: 0; min-height: 64px; }
   .forfeit-confirm .small { display: none; }

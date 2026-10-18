@@ -76,6 +76,7 @@ function publicGame(room: Room) {
       cardCount: s.hand.length,
       status: s.status,
       connected: room.players.some((p) => p.id === s.personId && p.socketId !== null),
+      stats: s.stats,
     })),
     pile: game.pile.slice(-3), // only the top 3 cards, so nobody can look up the first card
     pileCount: game.pile.length,
@@ -85,6 +86,9 @@ function publicGame(room: Room) {
     collecting: game.awardTo !== null,
     slapHistory: game.slapHistory.slice(-10),
     winner: game.winner === null ? null : game.seats[game.winner].name,
+    winnerSeat: game.winner,
+    pilesPlayed: game.pilesPlayed,
+    durationMs: (game.endedAt ?? Date.now()) - game.startedAt,
   };
 }
 
@@ -147,10 +151,29 @@ function resolveSlapRace(room: Room) {
     }
     awardPile(game, first.seat);
     game.slapHistory.push({ name: game.seats[first.seat].name, ms: first.ms, result: "won" });
+    const stats = game.seats[first.seat].stats;
+    if (first.ms > 0 && (stats.fastestWinMs === null || first.ms < stats.fastestWinMs)) stats.fastestWinMs = first.ms;
     for (const a of rest) {
       game.slapHistory.push({ name: game.seats[a.seat].name, ms: a.ms, result: "late" });
     }
   }
+  afterChange(room);
+}
+
+// Stop any pending timers (used when a game is replaced or ended early)
+function clearTimers(room: Room) {
+  if (room.awardTimer) clearTimeout(room.awardTimer);
+  room.awardTimer = null;
+  room.slapRace = null;
+}
+
+// Shuffle and deal a new game for everyone seated
+function startNewGame(room: Room) {
+  clearTimers(room);
+  room.game = createGame(room.players.map((p) => ({ id: p.id, name: p.name })));
+  room.phase = "playing";
+  const counts = room.game.seats.map((s) => `${s.name}: ${s.hand.length} cards`).join(", ");
+  console.log("Game started:", room.id, "|", counts);
   afterChange(room);
 }
 
@@ -327,12 +350,16 @@ io.on("connection", (socket) => {
     const person = me;
     if (!room || !person || room.hostId !== person.id || room.phase !== "lobby") return;
     if (room.players.length < 2) return;
+    startNewGame(room);
+  });
 
-    room.game = createGame(room.players.map((p) => ({ id: p.id, name: p.name })));
-    room.phase = "playing";
-    const counts = room.game.seats.map((s) => `${s.name}: ${s.hand.length} cards`).join(", ");
-    console.log("Game started:", room.id, "|", counts);
-    afterChange(room);
+  // The host clicked "Play again" after a game: same seats, same rules, new deal
+  socket.on("playAgain", () => {
+    const room = currentRoom;
+    const person = me;
+    if (!room || !person || room.hostId !== person.id || room.phase !== "finished") return;
+    if (room.players.length < 2) return;
+    startNewGame(room);
   });
 
   // A player clicked Play
@@ -393,6 +420,7 @@ io.on("connection", (socket) => {
     const room = currentRoom;
     const person = me;
     if (!room || !person || room.hostId !== person.id || room.phase !== "finished") return;
+    clearTimers(room);
     room.phase = "lobby";
     room.game = null;
     sendRoom(room);

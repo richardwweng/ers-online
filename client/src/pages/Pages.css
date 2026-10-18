@@ -104,7 +104,34 @@
 .rule-summary div { display: flex; justify-content: space-between; gap: 12px; }
 .rule-summary span:last-child { color: var(--text); }
 
-@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
+/* ---------- Game over ---------- */
+.over-main { flex: 1; width: 100%; max-width: 860px; margin: 0 auto; display: flex; flex-direction: column; align-items: center; gap: 26px; }
+.over-hero { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; }
+.crown { color: var(--accent); }
+.over-avatar { border-radius: 50%; box-shadow: 0 0 0 4px var(--bg), 0 0 0 7px var(--accent), 0 0 50px rgba(242, 210, 122, 0.35); animation: pop 0.4s ease-out; }
+.over-title { margin: 4px 0 0; font-size: clamp(42px, 8vw, 64px); line-height: 1; font-weight: 800; letter-spacing: -1.5px; }
+.over-sub { margin: 0; font-size: 17px; color: #b9c8bf; }
+.stat-grid { width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.stat { padding: 18px 20px; border-radius: 18px; background: rgba(11, 16, 14, 0.82); border: 1px solid #24302b; min-width: 0; }
+.stat-label { font-size: 12px; font-weight: 600; letter-spacing: 0.5px; color: var(--dim); }
+.stat-value { margin-top: 6px; font-size: 30px; font-weight: 700; }
+.stat-unit { font-size: 16px; color: var(--muted); }
+.stat-who { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.standings { width: 100%; padding: 8px; border-radius: 22px; background: rgba(11, 16, 14, 0.82); border: 1px solid #24302b; }
+.standings-title { margin: 12px 14px 8px; font-size: 15px; font-weight: 700; color: #c9d4cd; }
+.standings-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.standings-list li { display: flex; align-items: center; gap: 14px; min-height: 52px; padding: 0 14px; border-radius: 14px; }
+.standings-list li.is-winner { background: var(--panel-2); }
+.standing-place { width: 22px; font-weight: 700; color: var(--muted); }
+.is-winner .standing-place { color: var(--accent); }
+.standing-name { flex: 1; min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.is-winner .standing-name { font-weight: 700; }
+.standing-note { font-size: 13px; color: var(--dim); text-align: right; }
+.over-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+.over-actions .waiting { flex-basis: 100%; text-align: center; }
+@keyframes pop { from { transform: scale(0.6); opacity: 0; } to { transform: none; opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } .over-avatar { animation: none; } }
 
 /* ---------- Phone ---------- */
 @media (max-width: 760px) {
@@ -124,4 +151,13 @@
   .seat-card .avatar, .open-ring { width: 40px !important; height: 40px !important; font-size: 16px !important; }
   .rules-panel { max-width: none; padding: 16px; }
   .start-row .btn-start { width: 100%; min-width: 0; }
+  .stat-grid { gap: 8px; }
+  .stat { padding: 12px; }
+  .stat-label { font-size: 10px; }
+  .stat-value { font-size: 20px; }
+  .stat-unit { font-size: 11px; }
+  .stat-who { font-size: 12px; white-space: normal; }
+  .over-avatar .avatar { width: 76px !important; height: 76px !important; font-size: 32px !important; }
+  .over-actions { width: 100%; flex-direction: column; }
+  .over-actions .btn-start { min-width: 0; }
 }
