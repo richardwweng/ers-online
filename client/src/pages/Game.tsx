@@ -121,11 +121,18 @@ export default function Game() {
     (p.connected ? "" : " (reconnecting...)");
 
   // Screen 3: game in progress (the table comes next step)
+    // Screen 3: game in progress (the table comes next step)
   if (room.phase === "playing") {
     return (
       <main>
         <h1>Game {room.id}</h1>
         <p>The game has started! {isPlayer ? "You're playing." : "You're spectating."}</p>
+        <h2>Players</h2>
+        <ul>
+          {room.players.map((p) => (
+            <li key={p.id}>{label(p)}</li>
+          ))}
+        </ul>
       </main>
     );
   }
