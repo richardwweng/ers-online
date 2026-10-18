@@ -1,0 +1,30 @@
+import type { CSSProperties } from "react";
+import type { Card as CardData } from "../types";
+
+const SUIT = { S: "♠", H: "♥", D: "♦", C: "♣" } as const;
+const SUIT_NAME = { S: "spades", H: "hearts", D: "diamonds", C: "clubs" } as const;
+const RANK_NAME: Record<string, string> = { A: "Ace", J: "Jack", Q: "Queen", K: "King" };
+
+export function cardLabel(card: CardData) {
+  return `${RANK_NAME[card.rank] ?? card.rank} of ${SUIT_NAME[card.suit]}`;
+}
+
+type Props = { card: CardData; className?: string; style?: CSSProperties };
+
+// A face-up playing card
+export default function Card({ card, className = "", style }: Props) {
+  const red = card.suit === "H" || card.suit === "D";
+  const suit = SUIT[card.suit];
+  return (
+    <div className={`card ${red ? "card-red" : ""} ${className}`} style={style} role="img" aria-label={cardLabel(card)}>
+      <span className="card-corner">{card.rank}<br />{suit}</span>
+      <span className="card-pip" aria-hidden="true">{suit}</span>
+      <span className="card-corner card-corner-flip" aria-hidden="true">{card.rank}<br />{suit}</span>
+    </div>
+  );
+}
+
+// A face-down card, used to show each player's stack
+export function CardBack({ small = false }: { small?: boolean }) {
+  return <div className={`card-back ${small ? "card-back-sm" : ""}`} aria-hidden="true" />;
+}

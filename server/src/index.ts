@@ -239,10 +239,10 @@ io.on("connection", (socket) => {
     if (person) {
       // Returning player: put them back in their seat
       clearTimeout(person.leaveTimer);
-          if (person.socketId && person.socketId !== socket.id) {
-      const oldSocket = io.sockets.sockets.get(person.socketId);
-      oldSocket?.leave(room.id);
-      oldSocket?.emit("replaced"); // tell the older tab it lost the seat
+      if (person.socketId && person.socketId !== socket.id) {
+        const oldSocket = io.sockets.sockets.get(person.socketId);
+        oldSocket?.leave(room.id);
+        oldSocket?.emit("replaced"); // tell the older tab it lost the seat
       }
       person.socketId = socket.id;
     } else {
@@ -344,6 +344,17 @@ io.on("connection", (socket) => {
     if (room.slapRace.some((a) => a.seat === seat)) return; // already slapped this pile
     const pingAdjustment = Math.min(rtt, MAX_PING_COMPENSATION_MS) / 2;
     room.slapRace.push({ seat, ms, at: Date.now() - pingAdjustment });
+  });
+
+  // A player gave up: same as leaving, so their cards go under the pile
+  socket.on("forfeit", () => {
+    const room = currentRoom;
+    const person = me;
+    if (!room || !person || room.phase !== "playing" || !room.game) return;
+    const seat = room.game.seats.findIndex((s) => s.personId === person.id);
+    if (seat === -1 || room.game.seats[seat].status === "eliminated") return;
+    forfeit(room.game, seat);
+    afterChange(room);
   });
 
   // The host clicked "Back to lobby" after a game ended
