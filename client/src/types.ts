@@ -59,7 +59,7 @@ export type RoomState = {
   game: GameView | null;
 };
 
-export type JoinReply = { ok: boolean; you?: string; error?: string };
+export type JoinReply = { ok: boolean; you?: string; error?: string; kicked?: boolean };
 
 // What the join screen can see about a game before you join it
 export type RoomPeek = {

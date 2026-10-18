@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { socket } from "../socket";
 import { SLAP_RULES } from "../rules";
 import { seatColor } from "../colors";
-import { Avatar, Brand, CopyIcon, EyeIcon, PlusIcon, ShareIcon } from "../components/ui";
+import { Avatar, Brand, CopyIcon, EyeIcon, PlusIcon, ShareIcon, XIcon } from "../components/ui";
 import type { RoomState } from "../types";
 
 type Props = { room: RoomState; myId: string; onLeave: () => void };
@@ -13,6 +13,7 @@ const useShareSheet =
 
 export default function Lobby({ room, myId, onLeave }: Props) {
   const [copied, setCopied] = useState(false);
+  const [confirmKick, setConfirmKick] = useState<string | null>(null); // who we're about to remove
 
   const isHost = room.hostId === myId;
   const isPlayer = room.players.some((p) => p.id === myId);
@@ -21,6 +22,39 @@ export default function Lobby({ room, myId, onLeave }: Props) {
   const host = room.players.find((p) => p.id === room.hostId);
   const link = `${window.location.origin}/game/${room.id}`;
   const seats = Array.from({ length: room.maxPlayers }, (_, i) => room.players[i] ?? null);
+
+  // Removing someone takes two clicks; the second click has to come within 3 seconds
+  useEffect(() => {
+    if (!confirmKick) return;
+    const t = setTimeout(() => setConfirmKick(null), 3000);
+    return () => clearTimeout(t);
+  }, [confirmKick]);
+
+  function kick(personId: string) {
+    if (confirmKick === personId) {
+      socket.emit("kick", personId);
+      setConfirmKick(null);
+    } else {
+      setConfirmKick(personId);
+    }
+  }
+
+  // The host's remove button, shown next to everyone except the host
+  function kickButton(personId: string, name: string, small = false) {
+    if (!isHost || personId === myId) return null;
+    const confirming = confirmKick === personId;
+    return (
+      <button
+        type="button"
+        className={`kick-btn ${small ? "kick-sm" : ""} ${confirming ? "is-confirm" : ""}`}
+        onClick={() => kick(personId)}
+        aria-label={confirming ? `Click again to remove ${name}` : `Remove ${name}`}
+        title={confirming ? "Click again to remove" : `Remove ${name}`}
+      >
+        {confirming ? "Remove?" : <XIcon size={small ? 12 : 16} />}
+      </button>
+    );
+  }
 
   async function shareLink() {
     if (useShareSheet) {
@@ -72,7 +106,7 @@ export default function Lobby({ room, myId, onLeave }: Props) {
                 p ? (
                   <div key={p.id} className="seat-card">
                     <Avatar name={p.name} color={seatColor(i)} size={52} />
-                    <div style={{ minWidth: 0 }}>
+                    <div style={{ minWidth: 0, flex: 1 }}>
                       <div className="seat-card-name">
                         {p.name}
                         {p.id === myId && <span className="dim" style={{ fontWeight: 500 }}> (you)</span>}
@@ -85,6 +119,7 @@ export default function Lobby({ room, myId, onLeave }: Props) {
                         <div className="seat-card-sub">Seated</div>
                       )}
                     </div>
+                    {kickButton(p.id, p.name)}
                   </div>
                 ) : (
                   <div key={`open-${i}`} className="seat-card is-open">
@@ -106,11 +141,16 @@ export default function Lobby({ room, myId, onLeave }: Props) {
                 {room.spectators.length === 0 ? (
                   <span>Nobody watching</span>
                 ) : (
-                  <span>
-                    Watching:{" "}
-                    <span className="watch-names">
-                      {room.spectators.map((s) => s.name + (s.id === myId ? " (you)" : "")).join(", ")}
-                    </span>
+                  <span className="watch-list">
+                    <span>Watching:</span>
+                    {room.spectators.map((s) => (
+                      <span key={s.id} className={`watch-chip ${s.connected ? "" : "is-away"}`}>
+                        {s.name}
+                        {s.id === myId ? " (you)" : ""}
+                        {!s.connected && " · reconnecting"}
+                        {kickButton(s.id, s.name, true)}
+                      </span>
+                    ))}
                   </span>
                 )}
               </span>

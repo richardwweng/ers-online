@@ -23,10 +23,11 @@ type Room = {
   game: GameState | null;
   awardTimer: ReturnType<typeof setTimeout> | null; // the pause before a face-card pile is collected
   slapRace: SlapAttempt[] | null; // correct slaps being compared to find the fastest
+  kicked: Set<string>; // secret IDs of people the host removed; they can't rejoin this game
 };
 
 type JoinRequest = { roomId: string; token: string; name?: string; spectate?: boolean };
-type JoinReply = { ok: boolean; you?: string; error?: string };
+type JoinReply = { ok: boolean; you?: string; error?: string; kicked?: boolean };
 
 const MAX_PLAYERS = 4;
 const RECONNECT_GRACE_MS = 30_000; // how long a seat is held after disconnecting
@@ -242,6 +243,7 @@ io.on("connection", (socket) => {
       game: null,
       awardTimer: null,
       slapRace: null,
+      kicked: new Set(),
     };
     rooms.set(room.id, room);
     deleteIfEmpty(room, 5 * 60_000); // clean up if nobody joins within 5 minutes
@@ -269,6 +271,9 @@ io.on("connection", (socket) => {
     if (!room) return reply({ ok: false, error: "Game not found. Check the link." });
     if (typeof token !== "string" || token.length > 100) {
       return reply({ ok: false, error: "Invalid player ID." });
+    }
+    if (room.kicked.has(token)) {
+      return reply({ ok: false, kicked: true, error: "The host removed you from this game." });
     }
 
     let person = [...room.players, ...room.spectators].find((p) => p.token === token);
@@ -313,6 +318,27 @@ io.on("connection", (socket) => {
     room.players.push(person);
     if (!room.hostId) room.hostId = person.id;
     sendRoom(room);
+  });
+
+  // The host removed someone from the lobby (player or watcher)
+  socket.on("kick", (personId: string) => {
+    const room = currentRoom;
+    const person = me;
+    if (!room || !person || room.hostId !== person.id || room.phase !== "lobby") return;
+    if (typeof personId !== "string" || personId === person.id) return;
+    const target = [...room.players, ...room.spectators].find((p) => p.id === personId);
+    if (!target) return;
+
+    clearTimeout(target.leaveTimer);
+    room.kicked.add(target.token);
+    if (target.socketId) {
+      const theirSocket = io.sockets.sockets.get(target.socketId);
+      theirSocket?.leave(room.id);
+      theirSocket?.emit("kicked"); // their screen shows "You were removed"
+    }
+    target.socketId = null;
+    console.log("Kicked:", target.name, "from", room.id);
+    removePerson(room, target);
   });
 
   // A seated player wants to watch instead (lobby only)

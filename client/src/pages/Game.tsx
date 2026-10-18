@@ -42,6 +42,7 @@ export default function Game() {
   const [error, setError] = useState("");
   const [room, setRoom] = useState<RoomState | null>(null);
   const [replaced, setReplaced] = useState(false); // this game was opened in another tab
+  const [kicked, setKicked] = useState(false); // the host removed us
 
   // Update whenever the server sends new room info
   useEffect(() => {
@@ -59,6 +60,7 @@ export default function Game() {
           setMyId(res.you);
           setError("");
         } else {
+          if (res.kicked) setKicked(true);
           setError(res.error ?? "Could not join");
         }
       });
@@ -75,6 +77,7 @@ export default function Game() {
         } else {
           setMyId(null);
           setRoom(null);
+          if (res.kicked) setKicked(true);
           if (res.error) setError(res.error);
           // Came from the home page with a name: join right away
           const savedName = localStorage.getItem("ers-name")?.trim();
@@ -103,6 +106,19 @@ export default function Game() {
     };
   }, []);
 
+  // The host removed us from the lobby
+  useEffect(() => {
+    function onKicked() {
+      setKicked(true);
+      setMyId(null);
+      setRoom(null);
+    }
+    socket.on("kicked", onKicked);
+    return () => {
+      socket.off("kicked", onKicked);
+    };
+  }, []);
+
   function takeBackSeat() {
     setReplaced(false);
     socket.connect(); // reconnecting runs rejoin(), which takes the seat back
@@ -119,6 +135,17 @@ export default function Game() {
         <p className="note">This game is open in another tab or window, so this one was disconnected.</p>
         <button type="button" className="btn btn-primary btn-lg" onClick={takeBackSeat}>
           Play here instead
+        </button>
+      </Message>
+    );
+  }
+
+  if (kicked) {
+    return (
+      <Message title="You were removed">
+        <p className="note">The host removed you from this game, so you can't rejoin it.</p>
+        <button type="button" className="btn btn-primary btn-lg" onClick={() => navigate("/")}>
+          Back to home
         </button>
       </Message>
     );

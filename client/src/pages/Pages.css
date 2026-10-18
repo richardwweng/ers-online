@@ -89,7 +89,18 @@
 .open-ring { width: 52px; height: 52px; flex: none; border-radius: 50%; border: 2px dashed #3a4a43; display: flex; align-items: center; justify-content: center; }
 .watch-row { margin-top: 14px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 8px 8px 14px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); }
 .watch-who { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; color: var(--muted); }
-.watch-names { color: var(--text); }
+.watch-list { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.watch-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 2px 10px; border-radius: 999px; background: var(--panel-2); color: var(--text); font-size: 13px; }
+.watch-chip:has(.kick-btn) { padding-right: 3px; }
+.watch-chip.is-away { color: #e6b566; }
+.kick-btn {
+  margin-left: auto; flex: none; min-width: 36px; height: 36px; padding: 0 10px; border-radius: 10px;
+  border: 1px solid var(--line-2); background: transparent; color: var(--dim); font-weight: 700; font-size: 13px;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.kick-btn:hover { color: #ff9a9a; border-color: #7e1f24; }
+.kick-btn.is-confirm { background: #3a1d20; border-color: #7e1f24; color: #ff9a9a; }
+.kick-btn.kick-sm { margin-left: 0; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; font-size: 12px; }
 .start-row { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; }
 .waiting { margin: 0; padding: 18px 20px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); color: var(--muted); }
 .rules-panel { flex: 1 1 300px; max-width: 380px; padding: 22px; border-radius: 22px; background: var(--panel); border: 1px solid var(--line); }
