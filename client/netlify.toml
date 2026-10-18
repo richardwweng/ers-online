@@ -1,0 +1,9 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Send every page (like /game/ABC123) to the app, so links work when opened directly
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

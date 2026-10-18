@@ -1,6 +1,6 @@
 import { io } from "socket.io-client";
 
-export const socket = io("http://localhost:3001");
+export const socket = io(import.meta.env.VITE_SERVER_URL ?? "http://localhost:3001");
 
 // A secret ID for this browser tab. It survives refreshes but not closing the tab.
 // (sessionStorage is separate for each tab, so multiple tabs still count as different players for testing.)

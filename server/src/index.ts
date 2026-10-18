@@ -47,8 +47,16 @@ function makeRoomId(): string {
   return rooms.has(id) ? makeRoomId() : id;
 }
 
-const io = new Server(3001, {
-  cors: { origin: "http://localhost:5173" },
+// The hosting service tells us which port to use. On your laptop, it's 3001.
+const PORT = Number(process.env.PORT) || 3001;
+
+// Which websites may connect. Online, this is your Netlify address.
+const CLIENT_ORIGINS = (process.env.CLIENT_ORIGIN ?? "http://localhost:5173")
+  .split(",")
+  .map((s) => s.trim());
+
+const io = new Server(PORT, {
+  cors: { origin: CLIENT_ORIGINS },
 });
 
 // ---------- What browsers are allowed to see ----------
@@ -357,4 +365,4 @@ io.on("connection", (socket) => {
   });
 });
 
-console.log("Server running on port 3001");
+console.log(`Server running on port ${PORT}`);
