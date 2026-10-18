@@ -1,16 +1,9 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router";
-import { socket, playerToken } from "../socket";
+import { socket, playerToken, useConnected } from "../socket";
 import Table from "../components/Table";
-import type { JoinReply, Person, RoomState, Settings } from "../types";
-
-const SLAP_RULES: { key: keyof Settings; label: string; example: string }[] = [
-  { key: "doubles", label: "Doubles", example: "7, 7" },
-  { key: "sandwich", label: "Sandwich", example: "7, K, 7" },
-  { key: "topBottom", label: "Top and bottom", example: "top card matches first card played" },
-  { key: "tens", label: "Tens", example: "3, 7" },
-  { key: "marriage", label: "Marriage", example: "K, Q or Q, K" },
-];
+import { SLAP_RULES } from "../rules";
+import type { JoinReply, Person, RoomState } from "../types";
 
 export default function Game() {
   const { roomId } = useParams();
@@ -19,6 +12,8 @@ export default function Game() {
   const [myId, setMyId] = useState<string | null>(null); // our public ID once joined
   const [error, setError] = useState("");
   const [room, setRoom] = useState<RoomState | null>(null);
+  const [replaced, setReplaced] = useState(false); // this game was opened in another tab
+  const connected = useConnected();
 
   // Update whenever the server sends new room info
   useEffect(() => {
@@ -49,6 +44,23 @@ export default function Game() {
     };
   }, [roomId]);
 
+  // Another tab took our seat: disconnect this one so the two don't fight over it
+  useEffect(() => {
+    function onReplaced() {
+      setReplaced(true);
+      socket.disconnect();
+    }
+    socket.on("replaced", onReplaced);
+    return () => {
+      socket.off("replaced", onReplaced);
+    };
+  }, []);
+
+  function takeBackSeat() {
+    setReplaced(false);
+    socket.connect(); // reconnecting runs rejoin(), which takes the seat back
+  }
+
   function join(spectate: boolean) {
     const trimmed = name.trim();
     if (!trimmed) {
@@ -66,7 +78,23 @@ export default function Game() {
     });
   }
 
-  if (checking) return <main><p>Loading...</p></main>;
+  if (replaced) {
+    return (
+      <main>
+        <h1>Open in another tab</h1>
+        <p>This game is open in another tab or window, so this one was disconnected.</p>
+        <button onClick={takeBackSeat}>Play here instead</button>
+      </main>
+    );
+  }
+
+  if (checking) {
+    return (
+      <main>
+        <p>{connected ? "Loading..." : "Waking up the server. This can take up to a minute..."}</p>
+      </main>
+    );
+  }
 
   // Screen 1: enter a name
   if (!myId) {

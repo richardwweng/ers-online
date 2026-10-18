@@ -238,8 +238,10 @@ io.on("connection", (socket) => {
     if (person) {
       // Returning player: put them back in their seat
       clearTimeout(person.leaveTimer);
-      if (person.socketId && person.socketId !== socket.id) {
-        io.sockets.sockets.get(person.socketId)?.leave(room.id); // an older tab loses the seat
+          if (person.socketId && person.socketId !== socket.id) {
+      const oldSocket = io.sockets.sockets.get(person.socketId);
+      oldSocket?.leave(room.id);
+      oldSocket?.emit("replaced"); // tell the older tab it lost the seat
       }
       person.socketId = socket.id;
     } else {

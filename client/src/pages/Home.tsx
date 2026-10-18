@@ -1,8 +1,9 @@
 import { useNavigate } from "react-router";
-import { socket } from "../socket";
+import { socket, useConnected } from "../socket";
 
 export default function Home() {
   const navigate = useNavigate();
+  const connected = useConnected();
 
   function createGame() {
     // Ask the server for a new room, then go to its page
@@ -14,7 +15,14 @@ export default function Home() {
   return (
     <main>
       <h1>ERS Online</h1>
-      <button onClick={createGame}>Create game</button>
+      <button onClick={createGame} disabled={!connected}>
+        {connected ? "Create game" : "Connecting..."}
+      </button>
+      {!connected && (
+        <p>
+          <small>Waking up the server. This can take up to a minute if nobody has played in a while.</small>
+        </p>
+      )}
     </main>
   );
 }
