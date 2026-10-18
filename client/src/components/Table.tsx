@@ -147,8 +147,7 @@ export default function Table({ room, game, myId, isHost }: Props) {
 
           <p>
             <small>
-              Pile: {game.pile.length} | Burned: {game.burnedCount}
-              {game.pile.length > 0 ? ` | First card: ${cardText(game.pile[0])}` : ""}
+            Pile: {game.pileCount} | Burned: {game.burnedCount}
             </small>
           </p>
         </div>

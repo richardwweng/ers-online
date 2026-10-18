@@ -77,7 +77,8 @@ function publicGame(room: Room) {
       status: s.status,
       connected: room.players.some((p) => p.id === s.personId && p.socketId !== null),
     })),
-    pile: game.pile, // played cards are face up, so everyone can see them
+    pile: game.pile.slice(-3), // only the top 3 cards, so nobody can look up the first card
+    pileCount: game.pile.length,
     burnedCount: game.burned.length,
     turn: game.turn,
     challenge: game.challenge,

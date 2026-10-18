@@ -25,6 +25,7 @@ export type SlapEntry = { name: string; ms: number; result: "won" | "late" | "wr
 export type GameView = {
   seats: SeatView[];
   pile: Card[];
+  pileCount: number;
   burnedCount: number;
   turn: number;
   challenge: { bySeat: number; chancesLeft: number } | null;
