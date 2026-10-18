@@ -74,13 +74,14 @@ export default function Home() {
       <main className="home-main">
         <section className="home-hero">
           <div>
+            <p className="home-eyebrow">ERS · Egyptian Rat Screw</p>
             <h1 className="home-title">
               Slap first.
               <br />
               <span className="accent">Remember everything.</span>
             </h1>
             <p className="home-lead">
-              Egyptian Ratscrew with your friends, right in the browser. Make a table, send the link, and play.
+              The fast card-slapping game, online with your friends. Make a table, send the link, and play.
             </p>
           </div>
 

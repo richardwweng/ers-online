@@ -42,6 +42,7 @@
 /* ---------- Home ---------- */
 .home-main { flex: 1; width: 100%; max-width: 1180px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 48px; }
 .home-hero { flex: 1 1 440px; display: flex; flex-direction: column; gap: 28px; }
+.home-eyebrow { margin: 0 0 14px; font-size: 13px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: #b9d3c5; }
 .home-title { margin: 0; font-size: clamp(40px, 7vw, 72px); line-height: 0.95; font-weight: 800; letter-spacing: -2px; }
 .home-lead { margin: 18px 0 0; max-width: 460px; font-size: 18px; line-height: 1.5; color: #b9c8bf; }
 .home-form { max-width: 440px; }

@@ -59,7 +59,7 @@ export default function Lobby({ room, myId, onLeave }: Props) {
   async function shareLink() {
     if (useShareSheet) {
       try {
-        await navigator.share({ title: "ERS Online", text: "Join my Egyptian Ratscrew game", url: link });
+        await navigator.share({ title: "ERS Online", text: "Join my Egyptian Rat Screw game", url: link });
       } catch {
         // They closed the share sheet; nothing to do
       }
