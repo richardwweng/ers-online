@@ -12,6 +12,7 @@ export type Settings = {
   topBottom: boolean;
   tens: boolean;
   marriage: boolean;
+  sixSeven: boolean;
 };
 
 // active: has cards
@@ -224,6 +225,7 @@ export function isValidSlap(pile: Card[], settings: Settings): boolean {
     const pair = top.rank + second.rank;
     if (pair === "KQ" || pair === "QK") return true;
   }
+  if (settings.sixSeven && second.rank === "6" && top.rank === "7") return true; // a 6, then a 7 right after
   return false;
 }
 

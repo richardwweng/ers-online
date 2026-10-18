@@ -8,6 +8,7 @@ export type Settings = {
   topBottom: boolean;
   tens: boolean;
   marriage: boolean;
+  sixSeven: boolean;
 };
 
 export type Card = { id: number; rank: string; suit: "S" | "H" | "D" | "C" };
