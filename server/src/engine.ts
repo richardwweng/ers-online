@@ -38,6 +38,7 @@ export type SlapEntry = { name: string; ms: number; result: "won" | "late" | "wr
 export type GameState = {
   seats: Seat[]; // in turn order
   pile: Card[]; // cards actually played; slap rules only look at these
+  pileBy: number[]; // which seat played each card in the pile (same order), for animations
   burned: Card[]; // burned cards, kept under the pile; they go to whoever wins it
   turn: number; // index of the seat whose turn it is
   challenge: { bySeat: number; chancesLeft: number } | null; // active face-card countdown
@@ -96,6 +97,7 @@ export function createGame(people: { id: string; name: string }[]): GameState {
   return {
     seats,
     pile: [],
+    pileBy: [],
     burned: [],
     turn: randomInt(seats.length), // random first player
     challenge: null,
@@ -184,6 +186,7 @@ export function playCard(game: GameState, seat: number): boolean {
 
   const card = s.hand.shift()!;
   game.pile.push(card);
+  game.pileBy.push(seat);
   if (s.hand.length === 0) s.status = "out"; // can still slap back in during this pile
 
   const chances = FACE_CHANCES[card.rank];
@@ -236,6 +239,7 @@ export function awardPile(game: GameState, seat: number) {
   s.stats.pilesWon += 1;
   s.hand.push(...game.burned, ...game.pile); // burned cards first, like flipping a real pile over
   game.pile = [];
+  game.pileBy = [];
   game.burned = [];
   game.challenge = null;
   game.awardTo = null;

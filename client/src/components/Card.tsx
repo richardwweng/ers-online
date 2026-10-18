@@ -10,14 +10,14 @@ function cardLabel(card: CardData) {
   return `${RANK_NAME[card.rank] ?? card.rank} of ${SUIT_NAME[card.suit]}`;
 }
 
-type Props = { card: CardData; className?: string; style?: CSSProperties };
+type Props = { card: CardData; className?: string; style?: CSSProperties; from?: string };
 
 // A face-up playing card
-export default function Card({ card, className = "", style }: Props) {
+export default function Card({ card, className = "", style, from }: Props) {
   const red = card.suit === "H" || card.suit === "D";
   const suit = SUIT[card.suit];
   return (
-    <div className={`card ${red ? "card-red" : ""} ${className}`} style={style} role="img" aria-label={cardLabel(card)}>
+    <div className={`card ${red ? "card-red" : ""} ${className}`} style={style} data-from={from} role="img" aria-label={cardLabel(card)}>
       <span className="card-corner">{card.rank}<br />{suit}</span>
       <span className="card-pip" aria-hidden="true">{suit}</span>
       <span className="card-corner card-corner-flip" aria-hidden="true">{card.rank}<br />{suit}</span>

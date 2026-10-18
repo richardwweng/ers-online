@@ -72,7 +72,7 @@
 .pile-info { font-size: 12px; color: #a8c2b4; letter-spacing: 0.3px; }
 
 /* ---------- Cards on the pile (base card styles live in Card.css) ---------- */
-.pile .card { position: absolute; top: 16px; left: calc(50% - 60px); transform: translateX(var(--x)) rotate(var(--r)); animation: drop 0.18s ease-out; }
+.pile .card { position: absolute; top: 16px; left: calc(50% - 60px); transform: translateX(var(--x)) rotate(var(--r)); }
 .pile .card.is-top { box-shadow: 0 16px 34px rgba(0, 0, 0, 0.55), 0 0 0 2px rgba(242, 210, 122, 0.55); }
 
 /* ---------- Controls ---------- */
@@ -100,22 +100,83 @@
 .forfeit-confirm { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 
 /* ---------- Animations ---------- */
-@keyframes drop {
-  from { opacity: 0; transform: translateX(var(--x)) translateY(-40px) scale(1.08) rotate(var(--r)); }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* A played card flies in from its player's seat (data-from = top, bottom, left or right) */
+.pile .card { --fx: 0px; --fy: -80px; animation: fly 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+.pile .card[data-from="bottom"] { --fx: 0px; --fy: 280px; }
+.pile .card[data-from="top"] { --fx: 0px; --fy: -280px; }
+.pile .card[data-from="left"] { --fx: -380px; --fy: 0px; }
+.pile .card[data-from="right"] { --fx: 380px; --fy: 0px; }
+@keyframes fly {
+  from { opacity: 0.3; transform: translate(calc(var(--x) + var(--fx)), var(--fy)) rotate(calc(var(--r) * 4)) scale(0.85); }
   to { opacity: 1; transform: translateX(var(--x)) rotate(var(--r)); }
 }
-@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-@media (prefers-reduced-motion: reduce) { .pile .card, .history li { animation: none; } }
+
+/* A won pile sweeps toward the winner's seat */
+.pile .card.sweep { z-index: 3; animation: sweep 0.6s cubic-bezier(0.5, 0, 0.75, 0) forwards; }
+@keyframes sweep {
+  from { opacity: 1; transform: translateX(var(--x)) rotate(var(--r)); }
+  to { opacity: 0; transform: translate(var(--fx), var(--fy)) rotate(calc(var(--r) * 6)) scale(0.4); }
+}
+
+/* Slap effects on a seat: a shake for a wrong slap, a gold flash for a winning one */
+.mini-seat, .tp-me { position: relative; }
+.fx-wrong { animation: shake 0.4s; }
+.fx-wrong .avatar { box-shadow: 0 0 0 3px var(--danger), 0 0 18px rgba(199, 53, 59, 0.6) !important; }
+.fx-won .avatar { box-shadow: 0 0 0 3px var(--accent), 0 0 26px rgba(242, 210, 122, 0.7) !important; animation: pulse 0.5s; }
+@keyframes shake { 0%, 100% { translate: 0 0; } 20% { translate: -7px 0; } 40% { translate: 6px 0; } 60% { translate: -4px 0; } 80% { translate: 3px 0; } }
+@keyframes pulse { 0% { scale: 1; } 40% { scale: 1.15; } 100% { scale: 1; } }
+.fx-bubble {
+  position: absolute; left: 50%; top: -8px; z-index: 4; translate: -50% -100%; padding: 3px 9px; border-radius: 999px;
+  font: 800 13px var(--font); white-space: nowrap; pointer-events: none; animation: bubble 0.9s ease-out forwards;
+}
+.fx-bubble-wrong { background: var(--danger); color: #fff; }
+.fx-bubble-won { background: var(--accent); color: #1b1608; }
+.fx-bubble-late { background: #2a2a20; color: #e6d38a; }
+@keyframes bubble {
+  0% { opacity: 0; transform: translateY(6px) scale(0.8); }
+  15% { opacity: 1; transform: none; }
+  75% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-10px); }
+}
+.slap-stamp {
+  position: absolute; left: 50%; top: 50%; z-index: 3; pointer-events: none;
+  font: 900 64px var(--font); letter-spacing: -2px; text-shadow: 0 6px 30px rgba(0, 0, 0, 0.6);
+  animation: stamp 0.8s ease-out forwards;
+}
+@keyframes stamp {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(1.8) rotate(-8deg); }
+  20% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(-8deg); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -60%) scale(1) rotate(-8deg); }
+}
+.icon-btn { width: 40px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+
+/* Less motion for people who ask their device for it: things fade instead of flying or shaking */
+@keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .pile .card, .history li, .fx-wrong, .fx-won .avatar { animation: none; }
+  .pile .card.sweep { animation: fade-out 0.3s forwards; }
+  .fx-bubble, .slap-stamp { animation-name: fade-out; }
+  .slap-stamp { transform: translate(-50%, -50%) rotate(-8deg); }
+}
 
 /* ---------- Phone layout ---------- */
 @media (max-width: 760px) {
   .tp { padding: 14px 14px 20px; gap: 14px; }
   .brand-sub, .conn-text { display: none; }
+  /* Phone header: brand and buttons on top, the room code and invite link on a full row below */
+  .room-pill { order: 3; flex-basis: 100%; justify-content: space-between; }
+  .room-pill .room-code { margin-right: auto; }
   .tp-history, .tp-side, .felt .seat, .kbd { display: none; }
   .tp-opponents { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; }
   .tp-me, .tp-last, .tp-rule-chips { display: flex; }
   .felt { height: 330px; border-width: 8px; border-radius: 32px; }
   .felt-center { gap: 8px; }
+  .pile .card[data-from="top"], .pile .card[data-from="left"], .pile .card[data-from="right"] { --fx: 0px; --fy: -240px; }
+  .pile .card[data-from="bottom"] { --fx: 0px; --fy: 240px; }
+  .slap-stamp { font-size: 44px; }
   .pile { transform: scale(0.82); }
   .tp-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .btn-xl { min-width: 0; min-height: 64px; }

@@ -3,9 +3,10 @@ import type { CSSProperties } from "react";
 import { socket, useConnected } from "../socket";
 import { SLAP_RULES } from "../rules";
 import Card, { CardBack } from "./Card";
-import { Avatar } from "./ui";
+import { Avatar, SoundOffIcon, SoundOnIcon } from "./ui";
 import { COLORS } from "../colors";
-import type { GameView, RoomState, SeatView, SlapEntry } from "../types";
+import { playSound, toggleMute, useMuted } from "../sound";
+import type { Card as CardData, GameView, RoomState, SeatView, SlapEntry } from "../types";
 import "./Table.css";
 
 // Where seats sit around the table, going clockwise from you at the bottom
@@ -15,6 +16,23 @@ const POSITIONS: Record<number, string[]> = {
   3: ["bottom", "left", "right"],
   4: ["bottom", "left", "top", "right"],
 };
+
+// Where a seat sits on screen, seen from `viewFrom` (your seat is always at the bottom)
+function positionFor(index: number, n: number, viewFrom: number) {
+  return POSITIONS[n]?.[(index - viewFrom + n) % n] ?? "top";
+}
+
+type FxKind = "won" | "late" | "wrong";
+type Fx = { kind: FxKind; key: number }; // a quick effect on one seat after a slap
+type Sweep = { cards: CardData[]; to: string; key: number }; // the pile flying to whoever won it
+
+const FX_LABEL = { won: "Won!", late: "Late", wrong: "−1" } as const;
+
+function withoutKey<T>(obj: Record<number, T>, key: number) {
+  const copy = { ...obj };
+  delete copy[key];
+  return copy;
+}
 
 const RESULT_LABEL = { won: "WON", late: "LATE", wrong: "BURN" } as const;
 const RESULT_TEXT = { won: "won the pile", late: "was too late", wrong: "slapped wrong" } as const;
@@ -51,7 +69,11 @@ type Props = { room: RoomState; game: GameView; myId: string };
 
 export default function Table({ room, game, myId }: Props) {
   const connected = useConnected();
+  const muted = useMuted();
   const [copied, setCopied] = useState(false);
+  const [fx, setFx] = useState<Record<number, Fx>>({});
+  const [sweep, setSweep] = useState<Sweep | null>(null);
+  const [stamp, setStamp] = useState<{ seat: number; key: number } | null>(null);
 
   const n = game.seats.length;
   const mySeatIndex = game.seats.findIndex((s) => s.id === myId);
@@ -82,6 +104,60 @@ export default function Table({ room, game, myId }: Props) {
   useEffect(() => {
     cardShownAt.current = performance.now();
   }, [topCardId]);
+
+  // Sounds: a flick for each new card, and a ping when it becomes your turn
+  const prevTopId = useRef(topCardId);
+  useEffect(() => {
+    if (topCardId !== null && topCardId !== prevTopId.current) playSound("card");
+    prevTopId.current = topCardId;
+  }, [topCardId]);
+
+  const wasMyTurn = useRef(isMyTurn);
+  useEffect(() => {
+    if (isMyTurn && !wasMyTurn.current) playSound("turn");
+    wasMyTurn.current = isMyTurn;
+  }, [isMyTurn]);
+
+  // Keep the latest pile and seat layout handy for the server's effect messages below
+  const pileRef = useRef(game.pile);
+  const layoutRef = useRef({ n, viewFrom });
+  useEffect(() => {
+    pileRef.current = game.pile;
+    layoutRef.current = { n, viewFrom };
+  }, [game.pile, n, viewFrom]);
+
+  // Effects the server tells us about: slaps (shake, flash, stamp) and piles being won (sweep)
+  useEffect(() => {
+    const timers: ReturnType<typeof setTimeout>[] = [];
+
+    function onSlapFx({ seat, result }: { seat: number; result: FxKind }) {
+      const key = Date.now() + Math.random();
+      setFx((prev) => ({ ...prev, [seat]: { kind: result, key } }));
+      timers.push(setTimeout(() => setFx((prev) => (prev[seat]?.key === key ? withoutKey(prev, seat) : prev)), 900));
+      if (result === "wrong") playSound("wrong");
+      if (result === "won") {
+        playSound("slap");
+        setStamp({ seat, key });
+        timers.push(setTimeout(() => setStamp((s) => (s?.key === key ? null : s)), 800));
+      }
+    }
+
+    function onPileWon({ seat }: { seat: number }) {
+      const { n, viewFrom } = layoutRef.current;
+      const key = Date.now() + Math.random();
+      setSweep({ cards: pileRef.current, to: positionFor(seat, n, viewFrom), key });
+      timers.push(setTimeout(() => setSweep((s) => (s?.key === key ? null : s)), 650));
+      timers.push(setTimeout(() => playSound("win"), 120));
+    }
+
+    socket.on("slapFx", onSlapFx);
+    socket.on("pileWon", onPileWon);
+    return () => {
+      socket.off("slapFx", onSlapFx);
+      socket.off("pileWon", onPileWon);
+      timers.forEach(clearTimeout);
+    };
+  }, []);
 
   const slap = useCallback(() => {
     if (!canSlap) return;
@@ -128,8 +204,15 @@ export default function Table({ room, game, myId }: Props) {
     seat,
     index,
     color: COLORS[index % COLORS.length],
-    position: POSITIONS[n]?.[(index - viewFrom + n) % n] ?? "top",
+    position: positionFor(index, n, viewFrom),
   }));
+  const fxClass = (index: number) => (fx[index] ? `fx-${fx[index].kind}` : "");
+  const fxBubble = (index: number) =>
+    fx[index] ? (
+      <span key={fx[index].key} className={`fx-bubble fx-bubble-${fx[index].kind}`} aria-hidden="true">
+        {FX_LABEL[fx[index].kind]}
+      </span>
+    ) : null;
   const opponents = seats.filter((s) => s.index !== mySeatIndex);
   const myColor = COLORS[Math.max(mySeatIndex, 0) % COLORS.length];
 
@@ -159,6 +242,16 @@ export default function Table({ room, game, myId }: Props) {
             <span className={`conn-dot ${connected ? "" : "off"}`} />
             <span className="conn-text">{connected ? "Connected" : "Reconnecting…"}</span>
           </span>
+          <button
+            type="button"
+            className="ghost-btn icon-btn"
+            onClick={toggleMute}
+            aria-pressed={muted}
+            aria-label={muted ? "Turn sound on" : "Mute sound"}
+            title={muted ? "Turn sound on" : "Mute sound"}
+          >
+            {muted ? <SoundOffIcon /> : <SoundOnIcon />}
+          </button>
           {canForfeit &&
             (confirmForfeit ? (
               <div className="forfeit-confirm">
@@ -213,8 +306,9 @@ export default function Table({ room, game, myId }: Props) {
             {opponents.map(({ seat, index, color }) => (
               <div
                 key={seat.id}
-                className={`mini-seat ${playing && index === game.turn ? "is-turn" : ""} ${seat.status === "eliminated" || !seat.connected ? "is-off" : ""}`}
+                className={`mini-seat ${playing && index === game.turn ? "is-turn" : ""} ${seat.status === "eliminated" || !seat.connected ? "is-off" : ""} ${fxClass(index)}`}
               >
+                {fxBubble(index)}
                 <Avatar name={seat.name} color={color} size={30} />
                 <div style={{ minWidth: 0 }}>
                   <div className="mini-name">{seat.name}</div>
@@ -231,7 +325,8 @@ export default function Table({ room, game, myId }: Props) {
               const isTurn = playing && !game.collecting && index === game.turn;
               const off = seat.status === "eliminated" || !seat.connected;
               return (
-                <div key={seat.id} className={`seat pos-${position} ${isMe ? "is-me" : ""} ${isTurn ? "is-turn" : ""} ${off ? "is-off" : ""}`}>
+                <div key={seat.id} className={`seat pos-${position} ${isMe ? "is-me" : ""} ${isTurn ? "is-turn" : ""} ${off ? "is-off" : ""} ${fxClass(index)}`}>
+                  {fxBubble(index)}
                   <Avatar name={seat.name} color={color} />
                   <div>
                     <div className="seat-name">
@@ -267,29 +362,45 @@ export default function Table({ room, game, myId }: Props) {
               )}
 
               <div className="pile">
-                {game.pile.length === 0 ? (
-                  <div className="pile-empty">Empty pile</div>
-                ) : (
-                  game.pile.map((card, k) => (
-                    <Card
-                      key={card.id}
-                      card={card}
-                      className={k === game.pile.length - 1 ? "is-top" : ""}
-                      style={{ "--r": `${tilt(card.id)}deg`, "--x": `${(k - (game.pile.length - 1)) * 28 + 14}px` } as CSSProperties}
-                    />
-                  ))
-                )}
+                {game.pile.length === 0 && !sweep && <div className="pile-empty">Empty pile</div>}
+                {/* The pile that was just won, flying to the winner */}
+                {sweep?.cards.map((card, k) => (
+                  <Card
+                    key={`sweep-${sweep.key}-${card.id}`}
+                    card={card}
+                    className="sweep"
+                    from={sweep.to}
+                    style={{ "--r": `${tilt(card.id)}deg`, "--x": `${(k - (sweep.cards.length - 1)) * 28 + 14}px` } as CSSProperties}
+                  />
+                ))}
+                {/* Each card flies in from the seat of whoever played it */}
+                {game.pile.map((card, k) => (
+                  <Card
+                    key={card.id}
+                    card={card}
+                    className={k === game.pile.length - 1 ? "is-top" : ""}
+                    from={game.pileBy[k] === undefined ? undefined : positionFor(game.pileBy[k], n, viewFrom)}
+                    style={{ "--r": `${tilt(card.id)}deg`, "--x": `${(k - (game.pile.length - 1)) * 28 + 14}px` } as CSSProperties}
+                  />
+                ))}
               </div>
 
               <div className="pile-info mono">
                 PILE {game.pileCount} · BURNED {game.burnedCount}
               </div>
             </div>
+
+            {stamp && (
+              <div key={stamp.key} className="slap-stamp" style={{ color: COLORS[stamp.seat % COLORS.length].bg }} aria-hidden="true">
+                SLAP!
+              </div>
+            )}
           </div>
 
           {/* Phone: your seat below the table */}
           {mySeat && (
-            <div className={`tp-me ${isMyTurn ? "is-turn" : ""}`}>
+            <div className={`tp-me ${isMyTurn ? "is-turn" : ""} ${fxClass(mySeatIndex)}`}>
+              {fxBubble(mySeatIndex)}
               <Avatar name={mySeat.name} color={myColor} size={40} />
               <div style={{ flex: 1 }}>
                 <div className="seat-name">You</div>

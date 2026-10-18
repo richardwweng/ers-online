@@ -36,6 +36,7 @@ export type SlapEntry = { name: string; ms: number; result: "won" | "late" | "wr
 export type GameView = {
   seats: SeatView[];
   pile: Card[];
+  pileBy: number[]; // which seat played each pile card
   pileCount: number;
   burnedCount: number;
   turn: number;

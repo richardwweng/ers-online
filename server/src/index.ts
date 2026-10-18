@@ -80,6 +80,7 @@ function publicGame(room: Room) {
       stats: s.stats,
     })),
     pile: game.pile.slice(-3), // only the top 3 cards, so nobody can look up the first card
+    pileBy: game.pileBy.slice(-3), // who played each of those 3 cards, so they can fly in from the right seat
     pileCount: game.pile.length,
     burnedCount: game.burned.length,
     turn: game.turn,
@@ -125,6 +126,7 @@ function afterChange(room: Room) {
         room.awardTimer = null;
         const g = room.game;
         if (room.slapRace || !g || g.awardTo === null) return; // a slap is handling it
+        io.to(room.id).emit("pileWon", { seat: g.awardTo }); // browsers sweep the pile to the winner
         awardPile(g, g.awardTo);
         afterChange(room);
       }, AWARD_DELAY_MS);
@@ -150,12 +152,15 @@ function resolveSlapRace(room: Room) {
       clearTimeout(room.awardTimer);
       room.awardTimer = null;
     }
+    io.to(room.id).emit("slapFx", { seat: first.seat, result: "won" }); // browsers flash the winner
+    io.to(room.id).emit("pileWon", { seat: first.seat });
     awardPile(game, first.seat);
     game.slapHistory.push({ name: game.seats[first.seat].name, ms: first.ms, result: "won" });
     const stats = game.seats[first.seat].stats;
     if (first.ms > 0 && (stats.fastestWinMs === null || first.ms < stats.fastestWinMs)) stats.fastestWinMs = first.ms;
     for (const a of rest) {
       game.slapHistory.push({ name: game.seats[a.seat].name, ms: a.ms, result: "late" });
+      io.to(room.id).emit("slapFx", { seat: a.seat, result: "late" });
     }
   }
   afterChange(room);
@@ -416,6 +421,7 @@ io.on("connection", (socket) => {
     if (!isValidSlap(game.pile, room.settings)) {
       wrongSlap(game, seat);
       game.slapHistory.push({ name: s.name, ms, result: "wrong" });
+      io.to(room.id).emit("slapFx", { seat, result: "wrong" }); // browsers shake the slapper's seat
       afterChange(room);
       return;
     }
