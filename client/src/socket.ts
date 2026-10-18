@@ -14,3 +14,6 @@ function getToken(): string {
 }
 
 export const playerToken = getToken();
+
+// Reply right away when the server measures our ping
+socket.on("latency", (ack: () => void) => ack());
