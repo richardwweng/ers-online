@@ -46,3 +46,11 @@ export type RoomState = {
 };
 
 export type JoinReply = { ok: boolean; you?: string; error?: string };
+
+// What the join screen can see about a game before you join it
+export type RoomPeek = {
+  hostName: string | null;
+  players: string[];
+  maxPlayers: number;
+  phase: "lobby" | "playing" | "finished";
+};

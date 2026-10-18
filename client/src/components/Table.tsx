@@ -3,18 +3,10 @@ import type { CSSProperties } from "react";
 import { socket, useConnected } from "../socket";
 import { SLAP_RULES } from "../rules";
 import Card, { CardBack } from "./Card";
+import { Avatar } from "./ui";
+import { COLORS } from "../colors";
 import type { GameView, RoomState, SeatView, SlapEntry } from "../types";
 import "./Table.css";
-
-type Color = { bg: string; fg: string };
-
-// One color per seat, matching the mockup
-const COLORS: Color[] = [
-  { bg: "#6E9BFF", fg: "#0F1C3A" },
-  { bg: "#F0837A", fg: "#3A1512" },
-  { bg: "#A58BFF", fg: "#1A1530" },
-  { bg: "#4CC4B0", fg: "#0D2A25" },
-];
 
 // Where seats sit around the table, going clockwise from you at the bottom
 const POSITIONS: Record<number, string[]> = {
@@ -37,18 +29,6 @@ function seatText(s: SeatView) {
 // A small fixed tilt for each card, so the pile looks hand-thrown but doesn't jump around
 function tilt(cardId: number) {
   return ((cardId * 37) % 17) - 8;
-}
-
-function Avatar({ name, color, size = 46 }: { name: string; color: Color; size?: number }) {
-  return (
-    <div
-      className="avatar"
-      style={{ width: size, height: size, background: color.bg, color: color.fg, fontSize: size * 0.4 }}
-      aria-hidden="true"
-    >
-      {name.slice(0, 1).toUpperCase()}
-    </div>
-  );
 }
 
 function CheckIcon() {

@@ -1,19 +1,46 @@
-import { useEffect, useState } from "react";
-import { useParams } from "react-router";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
+import { useLocation, useNavigate, useParams } from "react-router";
 import { socket, playerToken, useConnected } from "../socket";
 import Table from "../components/Table";
-import { SLAP_RULES } from "../rules";
-import type { JoinReply, Person, RoomState } from "../types";
+import { Brand } from "../components/ui";
+import JoinScreen from "./JoinScreen";
+import Lobby from "./Lobby";
+import type { JoinReply, RoomState } from "../types";
+import "./Pages.css";
 
+type Intent = "play" | "watch";
+
+// A full-screen message (loading, waking up, open in another tab)
+function Message({ title, children }: { title?: string; children: ReactNode }) {
+  return (
+    <div className="pg pg-felt-center">
+      <header className="pg-header">
+        <Brand />
+      </header>
+      <div className="center-msg">
+        {title && <h1 className="msg-title">{title}</h1>}
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// Everything at /game/ABC123: join screen, lobby, then the table
 export default function Game() {
-  const { roomId } = useParams();
-  const [name, setName] = useState(() => localStorage.getItem("ers-name") ?? "");
+  const { roomId = "" } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const connected = useConnected();
+
+  // Set when you come from the home page, so you join without typing your name again
+  const intent = useRef<Intent | null>((location.state as { intent?: Intent } | null)?.intent ?? null);
+
   const [checking, setChecking] = useState(true); // still checking for a saved seat?
   const [myId, setMyId] = useState<string | null>(null); // our public ID once joined
   const [error, setError] = useState("");
   const [room, setRoom] = useState<RoomState | null>(null);
   const [replaced, setReplaced] = useState(false); // this game was opened in another tab
-  const connected = useConnected();
 
   // Update whenever the server sends new room info
   useEffect(() => {
@@ -22,6 +49,21 @@ export default function Game() {
       socket.off("room", setRoom);
     };
   }, []);
+
+  const join = useCallback(
+    (name: string, spectate: boolean) => {
+      localStorage.setItem("ers-name", name); // remember the name for next time
+      socket.emit("joinRoom", { roomId, token: playerToken, name, spectate }, (res: JoinReply) => {
+        if (res.ok && res.you) {
+          setMyId(res.you);
+          setError("");
+        } else {
+          setError(res.error ?? "Could not join");
+        }
+      });
+    },
+    [roomId]
+  );
 
   // On page load (and after any reconnect), try to get back into our seat
   useEffect(() => {
@@ -33,7 +75,11 @@ export default function Game() {
           setMyId(null);
           setRoom(null);
           if (res.error) setError(res.error);
+          // Came from the home page with a name: join right away
+          const savedName = localStorage.getItem("ers-name")?.trim();
+          if (!res.error && intent.current && savedName) join(savedName, intent.current === "watch");
         }
+        intent.current = null; // only join automatically once
         setChecking(false);
       });
     }
@@ -42,7 +88,7 @@ export default function Game() {
     return () => {
       socket.off("connect", rejoin);
     };
-  }, [roomId]);
+  }, [roomId, join]);
 
   // Another tab took our seat: disconnect this one so the two don't fight over it
   useEffect(() => {
@@ -61,129 +107,41 @@ export default function Game() {
     socket.connect(); // reconnecting runs rejoin(), which takes the seat back
   }
 
-  function join(spectate: boolean) {
-    const trimmed = name.trim();
-    if (!trimmed) {
-      setError("Enter a name first");
-      return;
-    }
-    localStorage.setItem("ers-name", trimmed); // remember the name for next time
-    socket.emit("joinRoom", { roomId, token: playerToken, name: trimmed, spectate }, (res: JoinReply) => {
-      if (res.ok && res.you) {
-        setMyId(res.you);
-        setError("");
-      } else {
-        setError(res.error ?? "Could not join");
-      }
-    });
+  function leave() {
+    socket.emit("leaveRoom");
+    navigate("/");
   }
 
   if (replaced) {
     return (
-      <main>
-        <h1>Open in another tab</h1>
-        <p>This game is open in another tab or window, so this one was disconnected.</p>
-        <button onClick={takeBackSeat}>Play here instead</button>
-      </main>
+      <Message title="Open in another tab">
+        <p className="note">This game is open in another tab or window, so this one was disconnected.</p>
+        <button type="button" className="btn btn-primary btn-lg" onClick={takeBackSeat}>
+          Play here instead
+        </button>
+      </Message>
     );
   }
 
-  if (checking) {
-    return (
-      <main>
-        <p>{connected ? "Loading..." : "Waking up the server. This can take up to a minute..."}</p>
-      </main>
-    );
-  }
+  const loading = (
+    <Message>
+      <div className="spinner" aria-hidden="true" />
+      <p className="note">
+        {connected ? "Loading the table…" : "Waking up the server. This can take up to a minute…"}
+      </p>
+    </Message>
+  );
 
-  // Screen 1: enter a name
-  if (!myId) {
-    return (
-      <main>
-        <h1>Join game {roomId}</h1>
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && join(false)}
-          placeholder="Your name"
-          maxLength={16}
-        />
-        <button onClick={() => join(false)}>Join</button>
-        <button onClick={() => join(true)}>Spectate</button>
-        {error && <p>{error}</p>}
-      </main>
-    );
-  }
-
-  if (!room) return <main><p>Loading...</p></main>;
+  if (checking) return loading;
+  if (!myId) return <JoinScreen roomId={roomId} error={error} onJoin={join} />;
+  if (!room) return loading;
 
   const isHost = room.hostId === myId;
 
-  // Screen 3: the table (during and after a game)
+  // The table (during and after a game)
   if (room.phase !== "lobby" && room.game) {
     return <Table room={room} game={room.game} myId={myId} isHost={isHost} />;
   }
 
-  const isPlayer = room.players.some((p) => p.id === myId);
-  const seatsOpen = room.players.length < room.maxPlayers;
-  const link = window.location.href;
-
-  const label = (p: Person) =>
-    p.name +
-    (p.id === room.hostId ? " (host)" : "") +
-    (p.id === myId ? " (you)" : "") +
-    (p.connected ? "" : " (reconnecting...)");
-
-  // Screen 2: the lobby
-  return (
-    <main>
-      <h1>Game {room.id}</h1>
-      <p>Invite link: {link}</p>
-      <button onClick={() => navigator.clipboard.writeText(link)}>Copy link</button>
-
-      <h2>Players ({room.players.length}/{room.maxPlayers})</h2>
-      <ul>
-        {room.players.map((p) => (
-          <li key={p.id}>{label(p)}</li>
-        ))}
-      </ul>
-
-      {room.spectators.length > 0 && (
-        <>
-          <h2>Spectators ({room.spectators.length})</h2>
-          <ul>
-            {room.spectators.map((s) => (
-              <li key={s.id}>{label(s)}</li>
-            ))}
-          </ul>
-        </>
-      )}
-
-      {!isPlayer && seatsOpen && (
-        <button onClick={() => socket.emit("takeSeat")}>Take a seat</button>
-      )}
-
-      <h2>Slap rules</h2>
-      {SLAP_RULES.map((rule) => (
-        <label key={rule.key} style={{ display: "block" }}>
-          <input
-            type="checkbox"
-            checked={room.settings[rule.key]}
-            disabled={!isHost}
-            onChange={(e) => socket.emit("updateSettings", { [rule.key]: e.target.checked })}
-          />{" "}
-          {rule.label} <small>({rule.example})</small>
-        </label>
-      ))}
-      {!isHost && <p><small>Only the host can change these.</small></p>}
-
-      {isHost ? (
-        <button disabled={room.players.length < 2} onClick={() => socket.emit("startGame")}>
-          {room.players.length < 2 ? "Need at least 2 players" : "Start game"}
-        </button>
-      ) : (
-        <p>Waiting for the host to start...</p>
-      )}
-    </main>
-  );
+  return <Lobby room={room} myId={myId} onLeave={leave} />;
 }

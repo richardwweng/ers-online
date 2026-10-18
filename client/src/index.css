@@ -50,6 +50,7 @@ button:disabled { cursor: not-allowed; }
   align-items: center;
   justify-content: center;
   gap: 10px;
+  text-decoration: none;
   transition: transform 0.08s, box-shadow 0.08s, opacity 0.15s;
 }
 .btn-primary { border: none; background: var(--accent); color: #1b1608; box-shadow: 0 5px 0 var(--accent-shadow); }
@@ -57,16 +58,14 @@ button:disabled { cursor: not-allowed; }
 .btn-primary:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 1px 0 var(--accent-shadow); }
 .btn-danger:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 1px 0 var(--danger-shadow); }
 .btn:disabled { opacity: 0.4; }
+.btn-ghost { background: transparent; }
 
-/* Temporary look for the home and lobby screens until they get their own design */
-#root > main { max-width: 720px; margin: 0 auto; padding: 40px 20px; text-align: center; }
-#root > main ul { list-style: none; padding: 0; }
-#root > main button {
-  min-height: 44px; padding: 0 18px; margin: 4px; border-radius: 12px;
-  border: 1px solid var(--line-2); background: var(--panel-2); color: var(--text); font-weight: 600;
-}
-#root > main input:not([type="checkbox"]) {
-  min-height: 44px; padding: 0 14px; border-radius: 12px; border: 1px solid var(--line-2);
-  background: var(--panel); color: var(--text); font: 500 16px var(--font);
-}
-#root > main input[type="checkbox"] { accent-color: var(--accent); width: 18px; height: 18px; }
+/* Small pieces shared by every screen */
+.brand { display: flex; align-items: baseline; gap: 6px; }
+.brand-mark { font-size: 26px; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; }
+.brand-sub { font-size: 18px; font-weight: 500; color: var(--muted); }
+.avatar { border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; flex: none; }
+.dim { color: var(--dim); }
+.small { font-size: 12px; margin: 0; }
+.accent { color: var(--accent); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

@@ -1,0 +1,18 @@
+/* A face-up playing card */
+.card {
+  width: 120px; height: 168px; border-radius: 12px; background: #f7f4ec; color: #15181a; padding: 10px 12px;
+  display: flex; flex-direction: column; justify-content: space-between;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 255, 255, 0.6) inset;
+}
+.card-red { color: #c2282f; }
+.card-corner { font-weight: 800; font-size: 22px; line-height: 1; }
+.card-corner-flip { align-self: flex-end; transform: rotate(180deg); }
+.card-pip { align-self: center; font-size: 46px; line-height: 1; }
+
+/* A face-down card */
+.card-back {
+  width: 40px; height: 56px; border-radius: 7px; background: #6e1e2a; border: 3px solid #f1e6d2; flex: none;
+  background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.12) 0 3px, transparent 3px 8px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+.card-back-sm { width: 26px; height: 36px; border-width: 2px; border-radius: 5px; }

@@ -226,6 +226,20 @@ io.on("connection", (socket) => {
     reply(room.id);
   });
 
+  // The join screen asks who's in a game before you join it
+  socket.on("peekRoom", (roomId: string, reply: (info: unknown) => void) => {
+    if (typeof reply !== "function") return;
+    const room = typeof roomId === "string" ? rooms.get(roomId.toUpperCase()) : undefined;
+    if (!room) return reply(null);
+    const host = room.players.find((p) => p.id === room.hostId);
+    reply({
+      hostName: host?.name ?? null,
+      players: room.players.map((p) => p.name),
+      maxPlayers: MAX_PLAYERS,
+      phase: room.phase,
+    });
+  });
+
   // Joining for the first time, or coming back after a refresh
   socket.on("joinRoom", ({ roomId, token, name, spectate }: JoinRequest, reply: (res: JoinReply) => void) => {
     const room = rooms.get(roomId);
@@ -275,6 +289,23 @@ io.on("connection", (socket) => {
     room.spectators = room.spectators.filter((p) => p !== person);
     room.players.push(person);
     if (!room.hostId) room.hostId = person.id;
+    sendRoom(room);
+  });
+
+  // A seated player wants to watch instead (lobby only)
+  socket.on("standUp", () => {
+    const room = currentRoom;
+    const person = me;
+    if (!room || !person || room.phase !== "lobby") return;
+    if (!room.players.includes(person)) return;
+    room.players = room.players.filter((p) => p !== person);
+    room.spectators.push(person);
+
+    // If the host stood up, pass host to the next connected player
+    if (room.hostId === person.id) {
+      const next = room.players.find((p) => p.socketId !== null) ?? room.players[0];
+      room.hostId = next?.id ?? null;
+    }
     sendRoom(room);
   });
 
@@ -365,6 +396,18 @@ io.on("connection", (socket) => {
     room.phase = "lobby";
     room.game = null;
     sendRoom(room);
+  });
+
+  // Someone clicked Leave: remove them right away instead of holding their seat
+  socket.on("leaveRoom", () => {
+    const room = currentRoom;
+    const person = me;
+    if (!room || !person) return;
+    clearTimeout(person.leaveTimer);
+    socket.leave(room.id);
+    currentRoom = null;
+    me = null;
+    removePerson(room, person);
   });
 
   // Tab closed, refreshed, or lost connection: hold their spot for a bit

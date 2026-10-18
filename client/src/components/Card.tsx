@@ -1,11 +1,12 @@
 import type { CSSProperties } from "react";
 import type { Card as CardData } from "../types";
+import "./Card.css";
 
 const SUIT = { S: "♠", H: "♥", D: "♦", C: "♣" } as const;
 const SUIT_NAME = { S: "spades", H: "hearts", D: "diamonds", C: "clubs" } as const;
 const RANK_NAME: Record<string, string> = { A: "Ace", J: "Jack", Q: "Queen", K: "King" };
 
-export function cardLabel(card: CardData) {
+function cardLabel(card: CardData) {
   return `${RANK_NAME[card.rank] ?? card.rank} of ${SUIT_NAME[card.suit]}`;
 }
 

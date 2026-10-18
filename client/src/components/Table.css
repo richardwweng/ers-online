@@ -1,9 +1,6 @@
 /* ---------- Page layout ---------- */
 .tp { min-height: 100vh; max-width: 1480px; margin: 0 auto; padding: 20px 24px 28px; display: flex; flex-direction: column; gap: 20px; }
 .tp-header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 16px; }
-.brand { display: flex; align-items: baseline; gap: 6px; }
-.brand-mark { font-size: 26px; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; }
-.brand-sub { font-size: 18px; font-weight: 500; color: var(--muted); }
 .room-pill { display: flex; align-items: center; gap: 10px; background: #141b18; border: 1px solid #24302b; border-radius: 999px; padding: 4px 4px 4px 16px; }
 .room-code { font-size: 15px; font-weight: 700; letter-spacing: 2px; }
 .pill-btn { min-height: 36px; padding: 0 14px; border-radius: 999px; border: none; background: #24302b; color: var(--text); font-weight: 600; font-size: 13px; }
@@ -18,9 +15,6 @@
 
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 18px; }
 .panel-title { margin: 0 0 14px; font-size: 15px; font-weight: 700; letter-spacing: 0.4px; color: #c9d4cd; }
-.dim { color: var(--dim); }
-.small { font-size: 12px; margin: 0; }
-.accent { color: var(--accent); }
 
 /* ---------- Slap history ---------- */
 .history { list-style: none; margin: 0 0 14px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
@@ -57,7 +51,6 @@
 .seat.is-me.is-turn { box-shadow: 0 0 0 2px var(--accent), 0 0 28px rgba(242, 210, 122, 0.35); }
 .seat.is-turn:not(.is-me) .avatar { box-shadow: 0 0 0 3px var(--felt-edge), 0 0 0 6px var(--accent), 0 0 24px rgba(242, 210, 122, 0.45); }
 .seat.is-off { opacity: 0.45; }
-.avatar { border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; flex: none; }
 .seat-name { font-weight: 700; font-size: 15px; }
 .seat-sub { font-size: 12px; color: #a8c2b4; }
 .seat-sub.accent { color: var(--accent); font-weight: 600; }
@@ -83,24 +76,9 @@
 }
 .felt-over h2 { margin: 0; font-size: 48px; font-weight: 800; }
 
-/* ---------- Cards ---------- */
-.card {
-  width: 120px; height: 168px; border-radius: 12px; background: #f7f4ec; color: #15181a; padding: 10px 12px;
-  display: flex; flex-direction: column; justify-content: space-between;
-  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45), 0 1px 0 rgba(255, 255, 255, 0.6) inset;
-}
-.card-red { color: #c2282f; }
-.card-corner { font-weight: 800; font-size: 22px; line-height: 1; }
-.card-corner-flip { align-self: flex-end; transform: rotate(180deg); }
-.card-pip { align-self: center; font-size: 46px; line-height: 1; }
+/* ---------- Cards on the pile (base card styles live in Card.css) ---------- */
 .pile .card { position: absolute; top: 16px; left: calc(50% - 60px); transform: translateX(var(--x)) rotate(var(--r)); animation: drop 0.18s ease-out; }
 .pile .card.is-top { box-shadow: 0 16px 34px rgba(0, 0, 0, 0.55), 0 0 0 2px rgba(242, 210, 122, 0.55); }
-.card-back {
-  width: 40px; height: 56px; border-radius: 7px; background: #6e1e2a; border: 3px solid #f1e6d2; flex: none;
-  background-image: repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.12) 0 3px, transparent 3px 8px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
-}
-.card-back-sm { width: 26px; height: 36px; border-width: 2px; border-radius: 5px; }
 
 /* ---------- Controls ---------- */
 .tp-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 14px; }
@@ -147,5 +125,5 @@
   .felt-over h2 { font-size: 34px; }
   .tp-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .btn-xl { min-width: 0; min-height: 64px; }
-  .forfeit-confirm .small { display: none; }  
+  .forfeit-confirm .small { display: none; }
 }
