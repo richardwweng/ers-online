@@ -1,28 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router";
 import { socket, playerToken } from "../socket";
-
-type Person = { id: string; name: string; connected: boolean };
-
-type Settings = {
-  doubles: boolean;
-  sandwich: boolean;
-  topBottom: boolean;
-  tens: boolean;
-  marriage: boolean;
-};
-
-type RoomState = {
-  id: string;
-  phase: "lobby" | "playing" | "finished";
-  hostId: string | null;
-  settings: Settings;
-  players: Person[];
-  spectators: Person[];
-  maxPlayers: number;
-};
-
-type JoinReply = { ok: boolean; you?: string; error?: string };
+import Table from "../components/Table";
+import type { JoinReply, Person, RoomState, Settings } from "../types";
 
 const SLAP_RULES: { key: keyof Settings; label: string; example: string }[] = [
   { key: "doubles", label: "Doubles", example: "7, 7" },
@@ -110,6 +90,12 @@ export default function Game() {
   if (!room) return <main><p>Loading...</p></main>;
 
   const isHost = room.hostId === myId;
+
+  // Screen 3: the table (during and after a game)
+  if (room.phase !== "lobby" && room.game) {
+    return <Table room={room} game={room.game} myId={myId} isHost={isHost} />;
+  }
+
   const isPlayer = room.players.some((p) => p.id === myId);
   const seatsOpen = room.players.length < room.maxPlayers;
   const link = window.location.href;
@@ -119,23 +105,6 @@ export default function Game() {
     (p.id === room.hostId ? " (host)" : "") +
     (p.id === myId ? " (you)" : "") +
     (p.connected ? "" : " (reconnecting...)");
-
-  // Screen 3: game in progress (the table comes next step)
-    // Screen 3: game in progress (the table comes next step)
-  if (room.phase === "playing") {
-    return (
-      <main>
-        <h1>Game {room.id}</h1>
-        <p>The game has started! {isPlayer ? "You're playing." : "You're spectating."}</p>
-        <h2>Players</h2>
-        <ul>
-          {room.players.map((p) => (
-            <li key={p.id}>{label(p)}</li>
-          ))}
-        </ul>
-      </main>
-    );
-  }
 
   // Screen 2: the lobby
   return (
