@@ -196,7 +196,7 @@ export function isValidSlap(pile: Card[], settings: Settings): boolean {
 // A seat collects the whole pile (from a correct slap or a won challenge)
 export function awardPile(game: GameState, seat: number) {
   const s = game.seats[seat];
-  s.hand.push(...game.pile, ...game.burned); // add to the bottom of their hand
+  s.hand.push(...game.burned, ...game.pile); // burned cards first, like flipping a real pile over
   game.pile = [];
   game.burned = [];
   game.challenge = null;

@@ -11,11 +11,11 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "socket.io": "^4.8.4"
+    "socket.io": "^4.8.4",
+    "tsx": "^4.23.15"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",
-    "tsx": "^4.23.15",
     "typescript": "^7.0.2"
   },
   "allowScripts": {
