@@ -1,3 +1,4 @@
+import { createServer } from "http";
 import { Server } from "socket.io";
 import { randomUUID } from "crypto";
 import type { Settings, GameState } from "./engine";
@@ -61,9 +62,23 @@ const CLIENT_ORIGINS = (process.env.CLIENT_ORIGIN ?? "http://localhost:5173")
   .split(",")
   .map((s) => s.trim());
 
-const io = new Server(PORT, {
+// A plain web address for uptime checkers (like UptimeRobot) to visit every few minutes.
+// Any visit counts as activity, so Render's free plan doesn't put the server to sleep.
+const httpServer = createServer((req, res) => {
+  const path = (req.url ?? "/").split("?")[0];
+  if (path === "/" || path === "/health") {
+    res.writeHead(200, { "Content-Type": "text/plain" });
+    res.end("ERS Online server is running");
+    return;
+  }
+  res.writeHead(404);
+  res.end();
+});
+
+const io = new Server(httpServer, {
   cors: { origin: CLIENT_ORIGINS },
 });
+httpServer.listen(PORT);
 
 // ---------- What browsers are allowed to see ----------
 
