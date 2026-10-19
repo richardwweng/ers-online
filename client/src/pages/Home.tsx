@@ -76,9 +76,9 @@ export default function Home() {
           <div>
             <p className="home-eyebrow">ERS · Egyptian Rat Screw</p>
             <h1 className="home-title">
-              Slap first.
+              Slap fast.
               <br />
-              <span className="accent">Remember everything.</span>
+              <span className="accent">Keep track.</span>
             </h1>
             <p className="home-lead">
               The fast card-slapping game, online with your friends. Make a table, send the link, and play.
