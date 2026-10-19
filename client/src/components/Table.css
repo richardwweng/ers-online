@@ -175,7 +175,7 @@
 .seat.pos-left .fx-bubble { right: auto; left: calc(100% + 10px); }
 /* Phone player boxes: the tag goes inside the box, on its right side */
 .mini-seat .fx-bubble { right: 8px; }
-.tp-me .fx-bubble { right: 64px; }
+.tp-me .fx-bubble { right: 118px; }
 .fx-bubble-wrong { background: var(--danger); color: #fff; }
 .fx-bubble-won { background: var(--accent); color: #1b1608; }
 .fx-bubble-late { background: #2a2a20; color: #e6d38a; }

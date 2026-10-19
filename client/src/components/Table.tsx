@@ -5,6 +5,8 @@ import { SLAP_RULES } from "../rules";
 import Card, { CardBack } from "./Card";
 import { Avatar, HelpIcon, SoundOffIcon, SoundOnIcon } from "./ui";
 import HowToPlay from "./HowToPlay";
+import Emotes from "./Emotes";
+import { EMOTES } from "../emotes";
 import { COLORS } from "../colors";
 import { playSound, toggleMute, useMuted } from "../sound";
 import { buzz } from "../haptics";
@@ -79,6 +81,8 @@ export default function Table({ room, game, myId }: Props) {
   const [stamp, setStamp] = useState<{ seat: number; key: number } | null>(null);
   const [burn, setBurn] = useState<Burn | null>(null);
   const [showRules, setShowRules] = useState(false);
+  const [emotes, setEmotes] = useState<Record<number, { emoji: string; key: number }>>({}); // emotes showing by each seat
+  const [emoteCooldown, setEmoteCooldown] = useState(false);
   const [tap, setTap] = useState<{ x: number; y: number; key: number } | null>(null); // ring where the table was tapped
 
   const n = game.seats.length;
@@ -195,10 +199,19 @@ export default function Table({ room, game, myId }: Props) {
     }
 
     socket.on("slapFx", onSlapFx);
+    // Someone sent an emote: show it by their seat for a couple of seconds
+    function onEmote({ seat, emoji }: { seat: number; emoji: string }) {
+      const key = Date.now() + Math.random();
+      setEmotes((prev) => ({ ...prev, [seat]: { emoji, key } }));
+      timers.push(setTimeout(() => setEmotes((prev) => (prev[seat]?.key === key ? withoutKey(prev, seat) : prev)), 2200));
+    }
+
     socket.on("pileWon", onPileWon);
+    socket.on("emote", onEmote);
     return () => {
       socket.off("slapFx", onSlapFx);
       socket.off("pileWon", onPileWon);
+      socket.off("emote", onEmote);
       timers.forEach(clearTimeout);
     };
   }, []);
@@ -209,6 +222,17 @@ export default function Table({ room, game, myId }: Props) {
     buzz(12); // a tiny tap you can feel (Android only)
     return true;
   }, [canSlap]);
+
+  // Send an emote (at most about one a second; the server enforces it too)
+  const sendEmote = useCallback(
+    (emoji: string) => {
+      if (!mySeat || emoteCooldown) return;
+      socket.emit("emote", emoji);
+      setEmoteCooldown(true);
+      setTimeout(() => setEmoteCooldown(false), 1200);
+    },
+    [mySeat, emoteCooldown]
+  );
 
   // Phones: touching anywhere on the table slaps, the moment the finger lands
   function onFeltPointerDown(e: React.PointerEvent<HTMLDivElement>) {
@@ -227,6 +251,12 @@ export default function Table({ room, game, myId }: Props) {
       return !!el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable);
     }
     function onKeyDown(e: KeyboardEvent) {
+      // Number keys 1–6 send an emote
+      const digit = /^Digit([1-6])$/.exec(e.code);
+      if (digit && !isTyping(e) && !e.repeat && !document.querySelector("dialog[open]")) {
+        sendEmote(EMOTES[Number(digit[1]) - 1]);
+        return;
+      }
       if (e.code !== "Space" || isTyping(e)) return;
       if (document.querySelector("dialog[open]")) return; // the How to play guide is open: let Space scroll it
       e.preventDefault(); // don't scroll the page
@@ -241,7 +271,7 @@ export default function Table({ room, game, myId }: Props) {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
     };
-  }, [slap]);
+  }, [slap, sendEmote]);
 
   function copyLink() {
     navigator.clipboard.writeText(window.location.href).then(() => {
@@ -264,6 +294,12 @@ export default function Table({ room, game, myId }: Props) {
     position: positionFor(index, n, viewFrom),
   }));
   const fxClass = (index: number) => (fx[index] ? `fx-${fx[index].kind}` : "");
+  const emoteFor = (index: number) =>
+    emotes[index] ? (
+      <span key={emotes[index].key} className="emote" aria-hidden="true">
+        {emotes[index].emoji}
+      </span>
+    ) : null;
   const fxBubble = (index: number) =>
     fx[index] ? (
       <span key={fx[index].key} className={`fx-bubble fx-bubble-${fx[index].kind}`} aria-hidden="true">
@@ -375,6 +411,7 @@ export default function Table({ room, game, myId }: Props) {
                 className={`mini-seat ${playing && index === game.turn ? "is-turn" : ""} ${seat.status === "eliminated" || !seat.connected ? "is-off" : ""} ${fxClass(index)}`}
               >
                 {fxBubble(index)}
+                {emoteFor(index)}
                 <Avatar name={seat.name} color={color} size={30} />
                 <div style={{ minWidth: 0 }}>
                   <div className="mini-name">{seat.name}</div>
@@ -394,6 +431,7 @@ export default function Table({ room, game, myId }: Props) {
               return (
                 <div key={seat.id} className={`seat pos-${position} ${isMe ? "is-me" : ""} ${isTurn ? "is-turn" : ""} ${off ? "is-off" : ""} ${fxClass(index)}`}>
                   {fxBubble(index)}
+                  {emoteFor(index)}
                   <Avatar name={seat.name} color={color} />
                   <div>
                     <div className="seat-name">
@@ -479,6 +517,7 @@ export default function Table({ room, game, myId }: Props) {
           {mySeat && (
             <div className={`tp-me ${isMyTurn ? "is-turn" : ""} ${fxClass(mySeatIndex)}`}>
               {fxBubble(mySeatIndex)}
+              {emoteFor(mySeatIndex)}
               <Avatar name={mySeat.name} color={myColor} size={40} />
               <div style={{ flex: 1 }}>
                 <div className="seat-name">You</div>
@@ -486,6 +525,7 @@ export default function Table({ room, game, myId }: Props) {
                   {isMyTurn ? `Your turn · ${mySeat.cardCount} cards` : seatText(mySeat)}
                 </div>
               </div>
+              {playing && <Emotes className="emote-phone" onSend={sendEmote} coolingDown={emoteCooldown} />}
               {mySeat.cardCount > 0 && <CardBack small />}
             </div>
           )}
@@ -535,6 +575,7 @@ export default function Table({ room, game, myId }: Props) {
                 >
                   Slap <span className="kbd">Space</span>
                 </button>
+                <Emotes className="emote-desktop" onSend={sendEmote} coolingDown={emoteCooldown} />
               </>
             ) : !mySeat ? (
               <p className="dim">You're watching this game.</p>

@@ -11,6 +11,7 @@ type Person = {
   socketId: string | null; // null while disconnected
   leaveTimer?: ReturnType<typeof setTimeout>;
   ping: number; // round-trip time to this player's browser, in ms (0 until measured)
+  lastEmoteAt?: number; // when they last sent an emote (to stop spam)
 };
 
 // A correct slap waiting to be compared. `ms` is the reaction time we trust, `at` is when it arrived.
@@ -39,6 +40,8 @@ const AWARD_DELAY_MS = 1000; // pause before a failed challenge's pile is collec
 const SLAP_WINDOW_MS = 100; // shortest wait to collect correct slaps before picking the fastest
 const MAX_SLAP_WINDOW_MS = 300; // longest wait, for players with a lot of lag
 const MAX_PING_COMPENSATION_MS = 300; // cap so nobody can fake a huge ping for an advantage
+const EMOTES = ["😂", "🔥", "😤", "💀", "👏", "🤡"]; // same list as client/src/emotes.ts
+const EMOTE_COOLDOWN_MS = 1000; // at most one emote a second per player
 const PING_SLACK_MS = 40; // allowance for ping wobbling between measurements
 
 const rooms = new Map<string, Room>();
@@ -493,6 +496,20 @@ io.on("connection", (socket) => {
     }
     if (room.slapRace.some((a) => a.seat === seat)) return; // already slapped this pile
     room.slapRace.push({ seat, ms, at: now });
+  });
+
+  // A player sent an emote: show it to the whole table
+  socket.on("emote", (emoji: unknown) => {
+    const room = currentRoom;
+    const person = me;
+    if (!room || !person || room.phase !== "playing" || !room.game) return;
+    if (typeof emoji !== "string" || !EMOTES.includes(emoji)) return; // only the six emotes
+    const seat = room.game.seats.findIndex((s) => s.personId === person.id);
+    if (seat === -1) return; // watchers don't have a seat to show it by
+    const now = Date.now();
+    if (now - (person.lastEmoteAt ?? 0) < EMOTE_COOLDOWN_MS) return; // too soon: ignore
+    person.lastEmoteAt = now;
+    io.to(room.id).emit("emote", { seat, emoji });
   });
 
   // A player gave up: same as leaving, so their cards go under the pile

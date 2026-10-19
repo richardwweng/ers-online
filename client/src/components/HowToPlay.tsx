@@ -174,6 +174,14 @@ export default function HowToPlay({ open, onClose, settings }: Props) {
         </section>
 
         <section>
+          <h3>Emotes</h3>
+          <p>
+            Tap the <b>😀</b> button to react with 😂 🔥 😤 💀 👏 or 🤡. Everyone at the table sees it pop up by your seat. On a computer, the
+            number keys <b>1–6</b> send them instantly.
+          </p>
+        </section>
+
+        <section>
           <h3>Leaving</h3>
           <p>Forfeiting, or leaving for more than 30 seconds, puts all your cards under the pile. Refreshing or briefly losing connection keeps your seat.</p>
         </section>
