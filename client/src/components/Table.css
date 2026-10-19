@@ -70,7 +70,8 @@
 .chip-spacer { min-height: 36px; }
 .dots { display: flex; gap: 5px; }
 .dots span { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); }
-.pile { position: relative; width: 220px; height: 200px; }
+/* --fit is set by the page from the table's real size (1 = full size), so the pile always fits */
+.pile { position: relative; width: 220px; height: 200px; transform: scale(var(--fit, 1)); margin: calc((var(--fit, 1) - 1) * 100px) 0; }
 .pile-empty {
   position: absolute; top: 16px; left: calc(50% - 60px); width: 120px; height: 168px; border-radius: 12px;
   border: 2px dashed rgba(255, 255, 255, 0.18); display: flex; align-items: center; justify-content: center;
@@ -84,7 +85,7 @@
 
 /* ---------- Burned card: shown to everyone, then slides under the pile ---------- */
 .burn-show { position: absolute; inset: 0; z-index: 4; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; pointer-events: none; }
-.burn-card-wrap { --fx: 0px; --fy: -200px; --bs: 1; animation: burn 1.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+.burn-card-wrap { --fx: 0px; --fy: -200px; --bs: var(--burn-fit, 1); margin: calc((var(--bs) * 1.12 - 1) * 84px) 0; animation: burn 1.5s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
 .burn-card-wrap[data-from="bottom"] { --fx: 0px; --fy: 240px; }
 .burn-card-wrap[data-from="top"] { --fx: 0px; --fy: -240px; }
 .burn-card-wrap[data-from="left"] { --fx: -360px; --fy: 0px; }
@@ -154,12 +155,15 @@
 .fx-won .avatar { box-shadow: 0 0 0 3px var(--accent), 0 0 26px rgba(242, 210, 122, 0.7) !important; animation: pulse 0.5s; }
 @keyframes shake { 0%, 100% { translate: 0 0; } 20% { translate: -7px 0; } 40% { translate: 6px 0; } 60% { translate: -4px 0; } 80% { translate: 3px 0; } }
 @keyframes pulse { 0% { scale: 1; } 40% { scale: 1.15; } 100% { scale: 1; } }
+/* The "-1" / "Won!" tag sits right beside the player, never over the table's edge */
 .fx-bubble {
-  position: absolute; left: 50%; top: -8px; z-index: 4; translate: -50% -100%; padding: 3px 9px; border-radius: 999px;
+  position: absolute; top: 50%; right: calc(100% + 10px); z-index: 4; translate: 0 -50%; padding: 3px 9px; border-radius: 999px;
   font: 800 13px var(--font); white-space: nowrap; pointer-events: none; animation: bubble 0.9s ease-out forwards;
 }
-/* The top seat sits at the table's edge, so its tag goes below it instead of getting cut off */
-.seat.pos-top .fx-bubble { top: auto; bottom: -8px; translate: -50% 100%; }
+.seat.pos-left .fx-bubble { right: auto; left: calc(100% + 10px); }
+/* Phone player boxes: the tag goes inside the box, on its right side */
+.mini-seat .fx-bubble { right: 8px; }
+.tp-me .fx-bubble { right: 64px; }
 .fx-bubble-wrong { background: var(--danger); color: #fff; }
 .fx-bubble-won { background: var(--accent); color: #1b1608; }
 .fx-bubble-late { background: #2a2a20; color: #e6d38a; }
@@ -191,10 +195,7 @@
   .tp-me { padding-top: 6px; padding-bottom: 6px; }
   .tp-last { min-height: 38px; }
   .btn-xl { min-height: 56px; }
-  .pile { transform: scale(0.7); margin: -30px 0; }
   .felt-center { gap: 4px; }
-  .burn-card-wrap[data-from] { --bs: 0.6; }
-  .burn-show { margin-top: -24px; }
 }
 
 /* Short screens (small laptops, zoomed-in browsers): tighten the table so it still fits */
@@ -205,12 +206,7 @@
   .pos-top { top: 14px; }
   .pos-bottom { bottom: 14px; }
   .felt-center { gap: 6px; }
-  .pile { transform: scale(0.8); margin: -20px 0; }
   .btn-xl { min-height: 52px; }
-}
-@media (min-width: 761px) and (max-height: 600px) {
-  .pile { transform: scale(0.68); margin: -32px 0; }
-  .chip-spacer { min-height: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -233,17 +229,15 @@
   .tp-me, .tp-last, .tp-rule-chips { display: flex; }
   .tp { --felt-h: clamp(210px, calc(100dvh - 450px), 330px); }
   .felt { border-width: 8px; border-radius: 32px; }
-  .burn-card-wrap[data-from] { --fx: 0px; --bs: 0.8; }
-  .burn-show { gap: 0; }
+  .burn-card-wrap[data-from] { --fx: 0px; }
+  .burn-show { gap: 4px; }
   .burn-label { font-size: 12px; }
-  .tp-me .fx-bubble { left: auto; right: 64px; top: 50%; translate: 0 -50%; }
   .burn-card-wrap[data-from="bottom"] { --fy: 200px; }
   .burn-card-wrap[data-from="top"], .burn-card-wrap[data-from="left"], .burn-card-wrap[data-from="right"] { --fy: -200px; }
   .felt-center { gap: 8px; }
   .pile .card[data-from="top"], .pile .card[data-from="left"], .pile .card[data-from="right"] { --fx: 0px; --fy: -240px; }
   .pile .card[data-from="bottom"] { --fx: 0px; --fy: 240px; }
   .slap-stamp { font-size: 44px; }
-  .pile { transform: scale(0.82); }
   .tp-controls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .btn-xl { min-width: 0; min-height: 64px; }
   .forfeit-confirm .small { display: none; }

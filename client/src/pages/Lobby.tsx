@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { socket } from "../socket";
 import { SLAP_RULES } from "../rules";
 import { seatColor } from "../colors";
-import { Avatar, Brand, CopyIcon, EyeIcon, PlusIcon, ShareIcon, XIcon } from "../components/ui";
+import { Avatar, Brand, CopyIcon, EyeIcon, HelpIcon, PlusIcon, ShareIcon, XIcon } from "../components/ui";
+import HowToPlay from "../components/HowToPlay";
 import type { RoomState } from "../types";
 
 type Props = { room: RoomState; myId: string; onLeave: () => void };
@@ -14,6 +15,7 @@ const useShareSheet =
 export default function Lobby({ room, myId, onLeave }: Props) {
   const [copied, setCopied] = useState(false);
   const [confirmKick, setConfirmKick] = useState<string | null>(null); // who we're about to remove
+  const [showRules, setShowRules] = useState(false);
 
   const isHost = room.hostId === myId;
   const isPlayer = room.players.some((p) => p.id === myId);
@@ -78,9 +80,15 @@ export default function Lobby({ room, myId, onLeave }: Props) {
     <div className="pg">
       <header className="pg-header">
         <Brand />
-        <button type="button" className="btn btn-ghost btn-sm" onClick={onLeave}>
-          Leave
-        </button>
+        <div className="pg-header-right">
+          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShowRules(true)}>
+            <HelpIcon size={16} />
+            How to play
+          </button>
+          <button type="button" className="btn btn-ghost btn-sm" onClick={onLeave}>
+            Leave
+          </button>
+        </div>
       </header>
 
       <div className="lobby-body">
@@ -221,6 +229,8 @@ export default function Lobby({ room, myId, onLeave }: Props) {
           </div>
         </aside>
       </div>
+
+      <HowToPlay open={showRules} onClose={() => setShowRules(false)} settings={room.settings} />
     </div>
   );
 }

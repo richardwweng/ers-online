@@ -3,7 +3,8 @@ import type { CSSProperties } from "react";
 import { socket, useConnected } from "../socket";
 import { SLAP_RULES } from "../rules";
 import Card, { CardBack } from "./Card";
-import { Avatar, SoundOffIcon, SoundOnIcon } from "./ui";
+import { Avatar, HelpIcon, SoundOffIcon, SoundOnIcon } from "./ui";
+import HowToPlay from "./HowToPlay";
 import { COLORS } from "../colors";
 import { playSound, toggleMute, useMuted } from "../sound";
 import type { Card as CardData, GameView, RoomState, SeatView, SlapEntry } from "../types";
@@ -76,6 +77,7 @@ export default function Table({ room, game, myId }: Props) {
   const [sweep, setSweep] = useState<Sweep | null>(null);
   const [stamp, setStamp] = useState<{ seat: number; key: number } | null>(null);
   const [burn, setBurn] = useState<Burn | null>(null);
+  const [showRules, setShowRules] = useState(false);
 
   const n = game.seats.length;
   const mySeatIndex = game.seats.findIndex((s) => s.id === myId);
@@ -106,6 +108,31 @@ export default function Table({ room, game, myId }: Props) {
   useEffect(() => {
     cardShownAt.current = performance.now();
   }, [topCardId]);
+
+  // Measure the table and scale the pile and burned card to fit it. CSS alone can't do this
+  // reliably: phone browsers report a taller screen than you can see while their toolbars show.
+  const feltRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const felt = feltRef.current;
+    if (!felt) return;
+    const update = () => {
+      const inner = felt.clientHeight;
+      const center = felt.querySelector<HTMLElement>(".felt-center");
+      const gap = center ? parseFloat(getComputedStyle(center).rowGap) || 0 : 0;
+      const seat = felt.querySelector<HTMLElement>(".seat");
+      const seatsOnTable = seat !== null && getComputedStyle(seat).display !== "none";
+      const room = inner - (seatsOnTable ? 168 : 12); // leave space for the seats at the top and bottom
+      const fixed = 36 + 18 + gap * 2; // challenge chip + pile count + spacing (these don't shrink)
+      const fit = Math.min(1, Math.max(0.4, (room - fixed) / 200)); // the pile is 200px tall at full size
+      const burnFit = Math.min(1, Math.max(0.4, (inner - 52) / 190)); // burned card (scaled up 12%) + its label
+      felt.style.setProperty("--fit", fit.toFixed(3));
+      felt.style.setProperty("--burn-fit", burnFit.toFixed(3));
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(felt);
+    return () => observer.disconnect();
+  }, []);
 
   // Sounds: a flick for each new card, and a ping when it becomes your turn
   const prevTopId = useRef(topCardId);
@@ -183,11 +210,12 @@ export default function Table({ room, game, myId }: Props) {
     }
     function onKeyDown(e: KeyboardEvent) {
       if (e.code !== "Space" || isTyping(e)) return;
+      if (document.querySelector("dialog[open]")) return; // the How to play guide is open: let Space scroll it
       e.preventDefault(); // don't scroll the page
       if (!e.repeat) slap(); // holding Space down only slaps once
     }
     function onKeyUp(e: KeyboardEvent) {
-      if (e.code === "Space" && !isTyping(e)) e.preventDefault();
+      if (e.code === "Space" && !isTyping(e) && !document.querySelector("dialog[open]")) e.preventDefault();
     }
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
@@ -253,6 +281,15 @@ export default function Table({ room, game, myId }: Props) {
             <span className={`conn-dot ${connected ? "" : "off"}`} />
             <span className="conn-text">{connected ? "Connected" : "Reconnecting…"}</span>
           </span>
+          <button
+            type="button"
+            className="ghost-btn icon-btn"
+            onClick={() => setShowRules(true)}
+            aria-label="How to play"
+            title="How to play"
+          >
+            <HelpIcon />
+          </button>
           <button
             type="button"
             className="ghost-btn icon-btn"
@@ -329,7 +366,7 @@ export default function Table({ room, game, myId }: Props) {
             ))}
           </div>
 
-          <div className="felt">
+          <div className="felt" ref={feltRef}>
             {/* Desktop: seats around the table */}
             {seats.map(({ seat, index, color, position }) => {
               const isMe = index === mySeatIndex;
@@ -517,6 +554,16 @@ export default function Table({ room, game, myId }: Props) {
           )}
         </aside>
       </div>
+
+      <HowToPlay
+        open={showRules}
+        onClose={() => {
+          setShowRules(false);
+          // Take focus off the "?" button so Space goes straight back to slapping
+          requestAnimationFrame(() => (document.activeElement as HTMLElement | null)?.blur());
+        }}
+        settings={room.settings}
+      />
     </div>
   );
 }

@@ -1,0 +1,69 @@
+/* ---------- How to play pop-up ---------- */
+.htp {
+  width: min(680px, calc(100vw - 24px)); max-height: min(88dvh, 900px); padding: 0; border: 1px solid var(--line-2); border-radius: 22px;
+  background: var(--panel); color: var(--text); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+}
+.htp::backdrop { background: rgba(4, 8, 6, 0.72); backdrop-filter: blur(3px); }
+.htp[open] { animation: htp-in 0.2s ease-out; }
+@keyframes htp-in { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: none; } }
+
+.htp-inner { padding: 0 28px 24px; outline: none; }
+.htp-head {
+  position: sticky; top: 0; z-index: 1; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  margin: 0 -28px 4px; padding: 22px 28px 14px; background: var(--panel); border-bottom: 1px solid var(--line);
+}
+.htp-eyebrow { margin: 0 0 2px; font-family: var(--mono); font-size: 11px; letter-spacing: 1px; color: var(--accent); text-transform: uppercase; }
+.htp h2 { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
+.htp-close {
+  width: 40px; height: 40px; flex: none; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 12px; border: 1px solid var(--line-2); background: transparent; color: #c9d4cd; cursor: pointer;
+}
+.htp-close:hover { color: var(--text); border-color: #4a5a53; }
+
+.htp section { padding: 18px 0 4px; }
+.htp h3 { margin: 0 0 8px; font-size: 16px; font-weight: 800; color: var(--accent); }
+.htp p { margin: 0 0 10px; font-size: 15px; line-height: 1.55; color: #cdd8d1; }
+.htp b { color: var(--text); }
+
+.htp-list { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; line-height: 1.5; color: #cdd8d1; }
+
+/* Small cards used in the examples */
+.mc-row { display: inline-flex; align-items: center; gap: 4px; vertical-align: middle; }
+.mc {
+  display: inline-flex; flex-direction: column; align-items: center; justify-content: center; width: 30px; height: 40px;
+  border-radius: 6px; background: #f6f1e4; color: #1b1b1b; font: 800 13px/1 var(--font); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+.mc-red { color: #c4252c; }
+.mc-suit { font-size: 12px; margin-top: 2px; }
+.mc-gap { color: var(--dim); font-weight: 800; padding: 0 2px; }
+
+.htp-faces { display: flex; flex-wrap: wrap; gap: 10px 18px; margin: 4px 0 12px; font-size: 14px; color: #cdd8d1; }
+.htp-faces > span { display: inline-flex; align-items: center; gap: 8px; }
+
+.htp-rules { list-style: none; margin: 12px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.htp-rules li { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: 14px; background: var(--panel-2); border: 1px solid var(--line); }
+.htp-rules li.is-off { opacity: 0.5; }
+.htp-rule-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.htp-rule-name { font-weight: 800; font-size: 15px; }
+.htp-rule-what { font-size: 13px; line-height: 1.4; color: var(--muted); }
+.htp-tag { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+.htp-tag.on { background: #1e3b2c; color: var(--good); }
+.htp-tag.off { background: #22201c; color: var(--dim); }
+
+.htp-timing { margin-top: 14px; padding: 18px 20px 10px !important; border-radius: 16px; background: #10241b; border: 1px solid #1f4434; }
+.htp-ms { font-size: 13px; padding: 1px 6px; border-radius: 6px; background: rgba(255, 255, 255, 0.08); }
+.htp-example { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 12px; padding: 12px 14px; border-radius: 12px; background: rgba(0, 0, 0, 0.25); font-size: 14px; line-height: 1.45; color: #cdd8d1; }
+.htp-example .mono { font-size: 13px; color: var(--text); }
+.htp-verdict { margin-top: 2px; font-weight: 700; color: var(--good); }
+
+.htp-done { display: block; width: 100%; margin-top: 22px; }
+
+@media (max-width: 560px) {
+  .htp { width: calc(100vw - 16px); max-height: 92dvh; border-radius: 18px; }
+  .htp-inner { padding: 0 18px 18px; }
+  .htp-head { margin: 0 -18px 4px; padding: 16px 18px 12px; }
+  .htp h2 { font-size: 22px; }
+  .htp-rules { grid-template-columns: minmax(0, 1fr); }
+  .htp p, .htp-list { font-size: 14px; }
+}
+@media (prefers-reduced-motion: reduce) { .htp[open] { animation: none; } }

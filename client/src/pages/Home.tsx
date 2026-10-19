@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { socket, useConnected } from "../socket";
 import Card from "../components/Card";
+import HowToPlay from "../components/HowToPlay";
 import { Brand, EyeIcon } from "../components/ui";
 import type { Card as CardData, RoomPeek } from "../types";
 import "./Pages.css";
@@ -21,6 +22,7 @@ export default function Home() {
   const [nameError, setNameError] = useState("");
   const [codeError, setCodeError] = useState("");
   const [creating, setCreating] = useState(false);
+  const [showRules, setShowRules] = useState(false);
 
   // Make sure there's a name, and remember it for next time
   function checkName(): boolean {
@@ -63,7 +65,9 @@ export default function Home() {
       <header className="pg-header">
         <Brand />
         <div className="pg-header-right">
-          <a className="link-quiet" href="#how">How to play</a>
+          <button type="button" className="link-quiet link-btn" onClick={() => setShowRules(true)}>
+            How to play
+          </button>
           <span className="status">
             <span className={`status-dot ${connected ? "" : "waking"}`} />
             {connected ? "Server ready" : "Waking up the server…"}
@@ -170,6 +174,8 @@ export default function Home() {
           <p>Run out and you can still slap back in, until someone wins that pile. Last player with cards wins.</p>
         </div>
       </section>
+
+      <HowToPlay open={showRules} onClose={() => setShowRules(false)} />
     </div>
   );
 }
