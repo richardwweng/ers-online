@@ -404,6 +404,19 @@ io.on("connection", (socket) => {
     removePerson(room, target);
   });
 
+  // The host hands host over to another seated player (lobby only)
+  socket.on("makeHost", (personId: string) => {
+    const room = currentRoom;
+    const person = me;
+    if (!room || !person || room.hostId !== person.id || room.phase !== "lobby") return;
+    if (typeof personId !== "string" || personId === person.id) return;
+    const target = room.players.find((p) => p.id === personId);
+    if (!target || target.socketId === null) return; // must be seated and connected
+    room.hostId = target.id;
+    console.log("Host:", person.name, "->", target.name, "in", room.id);
+    sendRoom(room);
+  });
+
   // A seated player wants to watch instead (lobby only)
   socket.on("standUp", () => {
     const room = currentRoom;

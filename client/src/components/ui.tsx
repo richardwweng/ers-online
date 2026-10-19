@@ -90,6 +90,14 @@ export function HelpIcon({ size = 18 }: IconProps) {
   );
 }
 
+export function CrownIcon({ size = 16 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5L3 8z" />
+    </svg>
+  );
+}
+
 export function PlusIcon({ size = 20 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">

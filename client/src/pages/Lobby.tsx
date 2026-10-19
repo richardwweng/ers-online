@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { socket } from "../socket";
 import { SLAP_RULES } from "../rules";
 import { seatColor } from "../colors";
-import { Avatar, Brand, CopyIcon, EyeIcon, HelpIcon, PlusIcon, ShareIcon, XIcon } from "../components/ui";
+import { Avatar, Brand, CopyIcon, CrownIcon, EyeIcon, HelpIcon, PlusIcon, ShareIcon, XIcon } from "../components/ui";
 import HowToPlay from "../components/HowToPlay";
 import type { RoomState } from "../types";
 
@@ -14,7 +14,9 @@ const useShareSheet =
 
 export default function Lobby({ room, myId, onLeave }: Props) {
   const [copied, setCopied] = useState(false);
-  const [confirmKick, setConfirmKick] = useState<string | null>(null); // who we're about to remove
+  // The host's two-click buttons: which person, and whether we're removing them or making them host
+  const [confirm, setConfirm] = useState<{ id: string; action: "kick" | "host" } | null>(null);
+  const [hostNotice, setHostNotice] = useState(false); // "You're the host now"
   const [showRules, setShowRules] = useState(false);
 
   const isHost = room.hostId === myId;
@@ -25,35 +27,63 @@ export default function Lobby({ room, myId, onLeave }: Props) {
   const link = `${window.location.origin}/game/${room.id}`;
   const seats = Array.from({ length: room.maxPlayers }, (_, i) => room.players[i] ?? null);
 
-  // Removing someone takes two clicks; the second click has to come within 3 seconds
+  // Removing someone or handing over host takes two clicks; the second has to come within 3 seconds
   useEffect(() => {
-    if (!confirmKick) return;
-    const t = setTimeout(() => setConfirmKick(null), 3000);
+    if (!confirm) return;
+    const t = setTimeout(() => setConfirm(null), 3000);
     return () => clearTimeout(t);
-  }, [confirmKick]);
+  }, [confirm]);
 
-  function kick(personId: string) {
-    if (confirmKick === personId) {
-      socket.emit("kick", personId);
-      setConfirmKick(null);
+  // When someone hands you the host, say so for a few seconds
+  const lastHostId = useRef(room.hostId);
+  useEffect(() => {
+    const before = lastHostId.current;
+    lastHostId.current = room.hostId;
+    if (room.hostId !== myId || before === myId || before === null) return;
+    setHostNotice(true);
+    const t = setTimeout(() => setHostNotice(false), 5000);
+    return () => clearTimeout(t);
+  }, [room.hostId, myId]);
+
+  function act(personId: string, action: "kick" | "host") {
+    if (confirm?.id === personId && confirm.action === action) {
+      socket.emit(action === "kick" ? "kick" : "makeHost", personId);
+      setConfirm(null);
     } else {
-      setConfirmKick(personId);
+      setConfirm({ id: personId, action });
     }
   }
 
   // The host's remove button, shown next to everyone except the host
   function kickButton(personId: string, name: string, small = false) {
     if (!isHost || personId === myId) return null;
-    const confirming = confirmKick === personId;
+    const confirming = confirm?.id === personId && confirm.action === "kick";
     return (
       <button
         type="button"
         className={`kick-btn ${small ? "kick-sm" : ""} ${confirming ? "is-confirm" : ""}`}
-        onClick={() => kick(personId)}
+        onClick={() => act(personId, "kick")}
         aria-label={confirming ? `Click again to remove ${name}` : `Remove ${name}`}
         title={confirming ? "Click again to remove" : `Remove ${name}`}
       >
         {confirming ? "Remove?" : <XIcon size={small ? 12 : 16} />}
+      </button>
+    );
+  }
+
+  // The host's "make host" button, shown next to the other seated players
+  function hostButton(personId: string, name: string, connected: boolean) {
+    if (!isHost || personId === myId || !connected) return null;
+    const confirming = confirm?.id === personId && confirm.action === "host";
+    return (
+      <button
+        type="button"
+        className={`kick-btn host-btn ${confirming ? "is-confirm" : ""}`}
+        onClick={() => act(personId, "host")}
+        aria-label={confirming ? `Click again to make ${name} the host` : `Make ${name} the host`}
+        title={confirming ? "Click again to hand over host" : `Make ${name} the host`}
+      >
+        {confirming ? "Make host?" : <CrownIcon />}
       </button>
     );
   }
@@ -127,7 +157,12 @@ export default function Lobby({ room, myId, onLeave }: Props) {
                         <div className="seat-card-sub">Seated</div>
                       )}
                     </div>
-                    {kickButton(p.id, p.name)}
+                    {isHost && p.id !== myId && (
+                      <div className="seat-actions">
+                        {hostButton(p.id, p.name, p.connected)}
+                        {kickButton(p.id, p.name)}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div key={`open-${i}`} className="seat-card is-open">
@@ -173,6 +208,12 @@ export default function Lobby({ room, myId, onLeave }: Props) {
               ) : null}
             </div>
           </section>
+
+          {hostNotice && (
+            <p className="host-notice" role="status">
+              <CrownIcon /> You're the host now. You pick the slap rules and start the game.
+            </p>
+          )}
 
           {isHost ? (
             <div className="start-row">
