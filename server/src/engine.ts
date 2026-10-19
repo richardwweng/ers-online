@@ -13,6 +13,7 @@ export type Settings = {
   tens: boolean;
   marriage: boolean;
   sixSeven: boolean;
+  ladders: boolean;
 };
 
 // active: has cards
@@ -209,6 +210,14 @@ export function playCard(game: GameState, seat: number): boolean {
 }
 
 // Does the current pile match any slap rule the host turned on?
+// Ladders: three cards in a row going up or down by one. Ranks loop around,
+// so A-2-3, Q-K-A and K-A-2 all count (and the same going down, like 2-A-K).
+function isLadder(a: Card, b: Card, c: Card): boolean {
+  const step1 = (RANKS.indexOf(b.rank) - RANKS.indexOf(a.rank) + 13) % 13;
+  const step2 = (RANKS.indexOf(c.rank) - RANKS.indexOf(b.rank) + 13) % 13;
+  return step1 === step2 && (step1 === 1 || step1 === 12); // both up by one, or both down by one
+}
+
 export function isValidSlap(pile: Card[], settings: Settings): boolean {
   const n = pile.length;
   if (n < 2) return false;
@@ -229,6 +238,7 @@ export function isValidSlap(pile: Card[], settings: Settings): boolean {
     if (pair === "KQ" || pair === "QK") return true;
   }
   if (settings.sixSeven && second.rank === "6" && top.rank === "7") return true; // a 6, then a 7 right after
+  if (settings.ladders && third && isLadder(third, second, top)) return true;
   return false;
 }
 

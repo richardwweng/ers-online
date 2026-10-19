@@ -36,6 +36,7 @@ const RULE_INFO: Record<keyof Settings, { what: string; cards: string }> = {
   tens: { what: "The top two cards add up to 10. Aces count as 1.", cards: "3♠ 7♥" },
   marriage: { what: "A king and a queen back to back, either order.", cards: "K♠ Q♥" },
   sixSeven: { what: "A 6, then a 7 right after it.", cards: "6♣ 7♦" },
+  ladders: { what: "Three cards in a row, going up or down. It loops around, so K, A, 2 and Q, K, A count too.", cards: "5♠ 6♥ 7♣" },
 };
 
 export default function HowToPlay({ open, onClose, settings }: Props) {

@@ -295,7 +295,7 @@ io.on("connection", (socket) => {
       id: makeRoomId(),
       phase: "lobby",
       hostId: null,
-      settings: { doubles: true, sandwich: true, topBottom: false, tens: false, marriage: false, sixSeven: false }, // only doubles and sandwiches start on
+      settings: { doubles: true, sandwich: true, topBottom: false, tens: false, marriage: false, sixSeven: false, ladders: false }, // only doubles and sandwiches start on
       players: [],
       spectators: [],
       game: null,
