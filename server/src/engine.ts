@@ -255,7 +255,8 @@ export function awardPile(game: GameState, seat: number) {
 }
 
 // A seat slapped when they shouldn't have
-export function wrongSlap(game: GameState, seat: number) {
+// Returns the card that was burned (null if they had none and are now out)
+export function wrongSlap(game: GameState, seat: number): Card | null {
   const s = game.seats[seat];
   s.stats.wrongSlaps += 1;
 
@@ -263,14 +264,16 @@ export function wrongSlap(game: GameState, seat: number) {
     // Nothing to burn: they're out for good
     markEliminated(game, seat, game.pilesPlayed + 1);
     onEliminated(game, seat);
-    return;
+    return null;
   }
 
-  game.burned.push(s.hand.shift()!); // burn one card under the pile
+  const card = s.hand.shift()!;
+  game.burned.push(card); // burn one card under the pile
   if (s.hand.length === 0) {
     s.status = "out";
     if (game.turn === seat && game.awardTo === null) advanceTurn(game, seat);
   }
+  return card;
 }
 
 // A seat gave up, or disconnected and didn't come back in time
@@ -282,4 +285,4 @@ export function forfeit(game: GameState, seat: number) {
   s.stats.forfeited = true;
   markEliminated(game, seat, game.pilesPlayed + 1);
   onEliminated(game, seat);
-}
+}

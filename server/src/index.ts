@@ -9,8 +9,10 @@ type Person = {
   name: string;
   socketId: string | null; // null while disconnected
   leaveTimer?: ReturnType<typeof setTimeout>;
+  ping: number; // round-trip time to this player's browser, in ms (0 until measured)
 };
 
+// A correct slap waiting to be compared. `ms` is the reaction time we trust, `at` is when it arrived.
 type SlapAttempt = { seat: number; ms: number; at: number };
 
 type Room = {
@@ -23,6 +25,7 @@ type Room = {
   game: GameState | null;
   awardTimer: ReturnType<typeof setTimeout> | null; // the pause before a face-card pile is collected
   slapRace: SlapAttempt[] | null; // correct slaps being compared to find the fastest
+  topCardAt: number; // when the server sent out the current top card
   kicked: Set<string>; // secret IDs of people the host removed; they can't rejoin this game
 };
 
@@ -32,8 +35,10 @@ type JoinReply = { ok: boolean; you?: string; error?: string; kicked?: boolean }
 const MAX_PLAYERS = 4;
 const RECONNECT_GRACE_MS = 30_000; // how long a seat is held after disconnecting
 const AWARD_DELAY_MS = 1000; // pause before a failed challenge's pile is collected
-const SLAP_WINDOW_MS = 100; // how long to collect correct slaps before picking the fastest
+const SLAP_WINDOW_MS = 100; // shortest wait to collect correct slaps before picking the fastest
+const MAX_SLAP_WINDOW_MS = 300; // longest wait, for players with a lot of lag
 const MAX_PING_COMPENSATION_MS = 300; // cap so nobody can fake a huge ping for an advantage
+const PING_SLACK_MS = 40; // allowance for ping wobbling between measurements
 
 const rooms = new Map<string, Room>();
 
@@ -135,7 +140,7 @@ function afterChange(room: Room) {
   sendRoom(room);
 }
 
-// Pick the fastest correct slap, adjusted for each player's ping
+// Pick the correct slap with the fastest reaction time (ties go to whoever arrived first)
 function resolveSlapRace(room: Room) {
   const attempts = room.slapRace;
   const game = room.game;
@@ -144,7 +149,7 @@ function resolveSlapRace(room: Room) {
 
   const contenders = attempts
     .filter((a) => game.seats[a.seat].status !== "eliminated")
-    .sort((a, b) => a.at - b.at);
+    .sort((a, b) => a.ms - b.ms || a.at - b.at);
 
   if (contenders.length > 0) {
     const [first, ...rest] = contenders;
@@ -189,6 +194,31 @@ function cleanMs(ms: unknown): number {
   return Math.max(0, Math.min(Math.round(ms), 9999));
 }
 
+function cappedPing(person: Person | undefined) {
+  return Math.min(person?.ping ?? 0, MAX_PING_COMPENSATION_MS);
+}
+
+// The reaction time we'll trust for a slap. The browser reports it, but the server can check it:
+// the card had to travel to the player and the slap had to travel back, so the real reaction
+// time can't be much less than (time since the card was sent) minus (their ping).
+function trustedReactionMs(reported: number, room: Room, person: Person, now: number) {
+  const sinceCardSent = Math.max(0, now - room.topCardAt);
+  const fastestPossible = Math.max(0, sinceCardSent - cappedPing(person) - PING_SLACK_MS);
+  return Math.min(Math.max(reported, fastestPossible), sinceCardSent);
+}
+
+// How long to wait for other correct slaps after the first one arrives. A player with more lag
+// than the first slapper could have reacted faster but still be on the way, so wait for them.
+function slapWindowMs(room: Room, firstSlapper: Person) {
+  const game = room.game;
+  if (!game) return SLAP_WINDOW_MS;
+  const pings = game.seats
+    .filter((s) => s.status !== "eliminated")
+    .map((s) => cappedPing(room.players.find((p) => p.id === s.personId)));
+  const extraLag = Math.max(0, ...pings) - cappedPing(firstSlapper);
+  return Math.min(MAX_SLAP_WINDOW_MS, Math.max(SLAP_WINDOW_MS, extraLag + PING_SLACK_MS));
+}
+
 // ---------- Rooms and people ----------
 
 // Delete a room after a delay if it's still empty by then
@@ -227,14 +257,22 @@ io.on("connection", (socket) => {
   let currentRoom: Room | null = null;
   let me: Person | null = null;
 
-  // Measure this player's ping every few seconds (used to judge slaps fairly)
+  // Measure this player's ping every few seconds (used to judge slaps fairly).
+  // Use the middle of the last 5 readings so one slow reading doesn't throw it off.
+  const pings: number[] = [];
   let rtt = 0;
-  const pingTimer = setInterval(() => {
+  function measurePing() {
     const start = Date.now();
     socket.timeout(2000).emit("latency", (err: Error | null) => {
-      if (!err) rtt = Date.now() - start;
+      if (err) return;
+      pings.push(Date.now() - start);
+      if (pings.length > 5) pings.shift();
+      rtt = [...pings].sort((a, b) => a - b)[Math.floor(pings.length / 2)];
+      if (me) me.ping = rtt;
     });
-  }, 3000);
+  }
+  measurePing();
+  const pingTimer = setInterval(measurePing, 3000);
 
   // Someone clicked "Create game"
   socket.on("createRoom", (reply: (roomId: string) => void) => {
@@ -248,6 +286,7 @@ io.on("connection", (socket) => {
       game: null,
       awardTimer: null,
       slapRace: null,
+      topCardAt: 0,
       kicked: new Set(),
     };
     rooms.set(room.id, room);
@@ -296,7 +335,7 @@ io.on("connection", (socket) => {
       // New player: they need a name first
       if (!name || !name.trim()) return reply({ ok: false });
 
-      person = { id: randomUUID(), token, name: name.trim().slice(0, 16), socketId: socket.id };
+      person = { id: randomUUID(), token, name: name.trim().slice(0, 16), socketId: socket.id, ping: rtt };
       const canSit = !spectate && room.phase === "lobby" && room.players.length < MAX_PLAYERS;
       if (canSit) {
         room.players.push(person);
@@ -308,6 +347,7 @@ io.on("connection", (socket) => {
 
     currentRoom = room;
     me = person;
+    if (rtt) person.ping = rtt;
     socket.join(room.id);
     reply({ ok: true, you: person.id });
     sendRoom(room);
@@ -401,10 +441,13 @@ io.on("connection", (socket) => {
     if (room.slapRace) return; // wait until the current slap is decided
     const seat = room.game.seats.findIndex((s) => s.personId === person.id);
     if (seat === -1) return; // spectators can't play
-    if (playCard(room.game, seat)) afterChange(room);
+    if (playCard(room.game, seat)) {
+      room.topCardAt = Date.now();
+      afterChange(room);
+    }
   });
 
-  // A player slapped (button or Space). `ms` is their reaction time, for display only.
+  // A player slapped (button or Space). `ms` is their reaction time, measured in their browser.
   socket.on("slap", (data: { ms?: number }) => {
     const room = currentRoom;
     const person = me;
@@ -416,24 +459,25 @@ io.on("connection", (socket) => {
     if (s.status === "eliminated" || game.winner !== null) return;
     if (game.pile.length === 0) return; // empty pile: slapping does nothing
 
-    const ms = cleanMs(data?.ms);
+    const now = Date.now();
+    const ms = trustedReactionMs(cleanMs(data?.ms), room, person, now);
 
     if (!isValidSlap(game.pile, room.settings)) {
-      wrongSlap(game, seat);
+      const burned = wrongSlap(game, seat);
       game.slapHistory.push({ name: s.name, ms, result: "wrong" });
-      io.to(room.id).emit("slapFx", { seat, result: "wrong" }); // browsers shake the slapper's seat
+      // Browsers shake the slapper's seat and show everyone the burned card
+      io.to(room.id).emit("slapFx", { seat, result: "wrong", card: burned });
       afterChange(room);
       return;
     }
 
-    // Correct slap: collect every correct slap in the next moment, then pick the fastest
+    // Correct slap: collect every correct slap in the next moment, then pick the fastest reaction
     if (!room.slapRace) {
       room.slapRace = [];
-      setTimeout(() => resolveSlapRace(room), SLAP_WINDOW_MS);
+      setTimeout(() => resolveSlapRace(room), slapWindowMs(room, person));
     }
     if (room.slapRace.some((a) => a.seat === seat)) return; // already slapped this pile
-    const pingAdjustment = Math.min(rtt, MAX_PING_COMPENSATION_MS) / 2;
-    room.slapRace.push({ seat, ms, at: Date.now() - pingAdjustment });
+    room.slapRace.push({ seat, ms, at: now });
   });
 
   // A player gave up: same as leaving, so their cards go under the pile
@@ -482,4 +526,4 @@ io.on("connection", (socket) => {
   });
 });
 
-console.log(`Server running on port ${PORT}`);
+console.log(`Server running on port ${PORT}`);

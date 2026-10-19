@@ -25,6 +25,7 @@ function positionFor(index: number, n: number, viewFrom: number) {
 type FxKind = "won" | "late" | "wrong";
 type Fx = { kind: FxKind; key: number }; // a quick effect on one seat after a slap
 type Sweep = { cards: CardData[]; to: string; key: number }; // the pile flying to whoever won it
+type Burn = { card: CardData; from: string; seat: number; name: string; key: number }; // a burned card being shown
 
 const FX_LABEL = { won: "Won!", late: "Late", wrong: "−1" } as const;
 
@@ -74,6 +75,7 @@ export default function Table({ room, game, myId }: Props) {
   const [fx, setFx] = useState<Record<number, Fx>>({});
   const [sweep, setSweep] = useState<Sweep | null>(null);
   const [stamp, setStamp] = useState<{ seat: number; key: number } | null>(null);
+  const [burn, setBurn] = useState<Burn | null>(null);
 
   const n = game.seats.length;
   const mySeatIndex = game.seats.findIndex((s) => s.id === myId);
@@ -121,20 +123,29 @@ export default function Table({ room, game, myId }: Props) {
   // Keep the latest pile and seat layout handy for the server's effect messages below
   const pileRef = useRef(game.pile);
   const layoutRef = useRef({ n, viewFrom });
+  const seatsRef = useRef(game.seats);
   useEffect(() => {
     pileRef.current = game.pile;
     layoutRef.current = { n, viewFrom };
-  }, [game.pile, n, viewFrom]);
+    seatsRef.current = game.seats;
+  }, [game.pile, n, viewFrom, game.seats]);
 
   // Effects the server tells us about: slaps (shake, flash, stamp) and piles being won (sweep)
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
 
-    function onSlapFx({ seat, result }: { seat: number; result: FxKind }) {
+    function onSlapFx({ seat, result, card }: { seat: number; result: FxKind; card?: CardData | null }) {
       const key = Date.now() + Math.random();
       setFx((prev) => ({ ...prev, [seat]: { kind: result, key } }));
       timers.push(setTimeout(() => setFx((prev) => (prev[seat]?.key === key ? withoutKey(prev, seat) : prev)), 900));
       if (result === "wrong") playSound("wrong");
+      if (result === "wrong" && card) {
+        // Show everyone the burned card for a second, then it slides under the pile
+        const { n, viewFrom } = layoutRef.current;
+        const name = seatsRef.current[seat]?.name ?? "";
+        setBurn({ card, from: positionFor(seat, n, viewFrom), seat, name, key });
+        timers.push(setTimeout(() => setBurn((b) => (b?.key === key ? null : b)), 1500));
+      }
       if (result === "won") {
         playSound("slap");
         setStamp({ seat, key });
@@ -390,6 +401,17 @@ export default function Table({ room, game, myId }: Props) {
               </div>
             </div>
 
+            {burn && (
+              <div key={burn.key} className="burn-show" aria-live="polite">
+                <div className="burn-card-wrap" data-from={burn.from}>
+                  <Card card={burn.card} />
+                </div>
+                <span className="burn-label" style={{ background: COLORS[burn.seat % COLORS.length].bg }}>
+                  {burn.name} burned
+                </span>
+              </div>
+            )}
+
             {stamp && (
               <div key={stamp.key} className="slap-stamp" style={{ color: COLORS[stamp.seat % COLORS.length].bg }} aria-hidden="true">
                 SLAP!
@@ -497,4 +519,4 @@ export default function Table({ room, game, myId }: Props) {
       </div>
     </div>
   );
-}
+}
