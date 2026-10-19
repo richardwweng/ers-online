@@ -7,6 +7,7 @@ import { Avatar, HelpIcon, SoundOffIcon, SoundOnIcon } from "./ui";
 import HowToPlay from "./HowToPlay";
 import { COLORS } from "../colors";
 import { playSound, toggleMute, useMuted } from "../sound";
+import { buzz } from "../haptics";
 import type { Card as CardData, GameView, RoomState, SeatView, SlapEntry } from "../types";
 import "./Table.css";
 
@@ -78,6 +79,7 @@ export default function Table({ room, game, myId }: Props) {
   const [stamp, setStamp] = useState<{ seat: number; key: number } | null>(null);
   const [burn, setBurn] = useState<Burn | null>(null);
   const [showRules, setShowRules] = useState(false);
+  const [tap, setTap] = useState<{ x: number; y: number; key: number } | null>(null); // ring where the table was tapped
 
   const n = game.seats.length;
   const mySeatIndex = game.seats.findIndex((s) => s.id === myId);
@@ -151,11 +153,13 @@ export default function Table({ room, game, myId }: Props) {
   const pileRef = useRef(game.pile);
   const layoutRef = useRef({ n, viewFrom });
   const seatsRef = useRef(game.seats);
+  const mySeatRef = useRef(mySeatIndex);
   useEffect(() => {
     pileRef.current = game.pile;
     layoutRef.current = { n, viewFrom };
     seatsRef.current = game.seats;
-  }, [game.pile, n, viewFrom, game.seats]);
+    mySeatRef.current = mySeatIndex;
+  }, [game.pile, n, viewFrom, game.seats, mySeatIndex]);
 
   // Effects the server tells us about: slaps (shake, flash, stamp) and piles being won (sweep)
   useEffect(() => {
@@ -166,6 +170,8 @@ export default function Table({ room, game, myId }: Props) {
       setFx((prev) => ({ ...prev, [seat]: { kind: result, key } }));
       timers.push(setTimeout(() => setFx((prev) => (prev[seat]?.key === key ? withoutKey(prev, seat) : prev)), 900));
       if (result === "wrong") playSound("wrong");
+      // Phones that can vibrate: a double buzz when YOU burn, a firm one when YOU win the slap
+      if (seat === mySeatRef.current) buzz(result === "wrong" ? [70, 50, 70] : result === "won" ? 45 : 0);
       if (result === "wrong" && card) {
         // Show everyone the burned card for a second, then it slides under the pile
         const { n, viewFrom } = layoutRef.current;
@@ -198,9 +204,21 @@ export default function Table({ room, game, myId }: Props) {
   }, []);
 
   const slap = useCallback(() => {
-    if (!canSlap) return;
+    if (!canSlap) return false;
     socket.emit("slap", { ms: Math.round(performance.now() - cardShownAt.current) });
+    buzz(12); // a tiny tap you can feel (Android only)
+    return true;
   }, [canSlap]);
+
+  // Phones: touching anywhere on the table slaps, the moment the finger lands
+  function onFeltPointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    if (e.pointerType !== "touch") return; // mouse users slap with Space or the button
+    if (!slap()) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ring = { x: e.clientX - rect.left, y: e.clientY - rect.top, key: e.timeStamp };
+    setTap(ring);
+    setTimeout(() => setTap((t) => (t?.key === ring.key ? null : t)), 450);
+  }
 
   // Space bar slaps (except while typing in a text box)
   useEffect(() => {
@@ -366,7 +384,8 @@ export default function Table({ room, game, myId }: Props) {
             ))}
           </div>
 
-          <div className="felt" ref={feltRef}>
+          <div className={`felt ${canSlap ? "is-slappable" : ""}`} ref={feltRef} onPointerDown={onFeltPointerDown}>
+            {tap && <span key={tap.key} className="tap-ring" style={{ left: tap.x, top: tap.y }} aria-hidden="true" />}
             {/* Desktop: seats around the table */}
             {seats.map(({ seat, index, color, position }) => {
               const isMe = index === mySeatIndex;
@@ -500,9 +519,18 @@ export default function Table({ room, game, myId }: Props) {
                 </button>
                 <button
                   type="button"
-                  className="btn btn-danger btn-xl"
+                  className="btn btn-danger btn-xl btn-slap"
                   onMouseDown={(e) => e.preventDefault()}
-                  onClick={slap}
+                  // Slap the instant a finger or mouse button goes down, like the Space bar does.
+                  // A normal click only fires when you let go, which made phone slaps slower.
+                  onPointerDown={(e) => {
+                    if (e.button !== 0) return; // left mouse button, finger or pen only
+                    e.preventDefault();
+                    slap();
+                  }}
+                  onClick={(e) => {
+                    if (e.detail === 0) slap(); // keyboard "click" (Enter): no pointer was involved
+                  }}
                   disabled={!canSlap}
                 >
                   Slap <span className="kbd">Space</span>
@@ -515,6 +543,7 @@ export default function Table({ room, game, myId }: Props) {
 
           {/* Phone: which slaps count */}
           <div className="tp-rule-chips">
+            {mySeat && <span className="chip chip-tap">Tap the table to slap</span>}
             {activeRules.map((r) => (
               <span key={r.key} className="chip">{r.label}</span>
             ))}

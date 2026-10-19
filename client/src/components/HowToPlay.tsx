@@ -162,6 +162,17 @@ export default function HowToPlay({ open, onClose, settings }: Props) {
         </section>
 
         <section>
+          <h3>Playing on a phone</h3>
+          <ul className="htp-list">
+            <li><b>Tap anywhere on the table to slap.</b> It counts the moment your finger lands. The Slap button works too.</li>
+            <li>
+              <b>Play full-screen:</b> add ERS to your home screen. On iPhone, tap Share, then <i>Add to Home Screen</i>. On Android, open the
+              browser menu and tap <i>Add to Home screen</i> (or <i>Install app</i>). You get more room for the table, with no browser bars.
+            </li>
+          </ul>
+        </section>
+
+        <section>
           <h3>Leaving</h3>
           <p>Forfeiting, or leaving for more than 30 seconds, puts all your cards under the pile. Refreshing or briefly losing connection keeps your seat.</p>
         </section>
