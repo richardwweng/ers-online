@@ -11,9 +11,9 @@ export function Brand() {
   );
 }
 
-// A tiny heart next to anyone named Narae ♥
+// A tiny heart next to anyone named Narzbars ♥
 export function NameHeart({ name }: { name: string }) {
-  if (name.trim().toLowerCase() !== "narae") return null;
+  if (name.trim().toLowerCase() !== "narzbars") return null;
   return <span className="name-heart" aria-label="heart">♥</span>;
 }
 
