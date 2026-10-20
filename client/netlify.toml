@@ -1,9 +1,11 @@
+# ERS Online moved to Cloudflare Pages (https://ers-online.pages.dev) to avoid Netlify's monthly credit limit.
+# This sends every old Netlify link, including game links like /game/ABC123, to the same page on the new site.
 [build]
   command = "npm run build"
   publish = "dist"
 
-# Send every page (like /game/ABC123) to the app, so links work when opened directly
 [[redirects]]
   from = "/*"
-  to = "/index.html"
-  status = 200
+  to = "https://ers-online.pages.dev/:splat"
+  status = 301
+  force = true
