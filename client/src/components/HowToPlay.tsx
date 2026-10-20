@@ -174,6 +174,23 @@ export default function HowToPlay({ open, onClose, settings }: Props) {
         </section>
 
         <section>
+          <h3>Open tables and Quick play</h3>
+          <ul className="htp-list">
+            <li>
+              <b>Quick play</b> on the home page drops you into an open table with other people online, or opens a new one if there isn't
+              any. You can also pick a table from the <b>Open tables</b> list.
+            </li>
+            <li>Hosts can make any table <b>public</b> in the lobby. Public tables are listed on the home page.</li>
+            <li>
+              Public games start on their own: 20 seconds after a second player sits down, or 5 seconds once all four seats are full.
+            </li>
+            <li>
+              On public tables, turns are timed. If it's your turn and you don't play within <b>10 seconds</b>, your card plays itself.
+            </li>
+          </ul>
+        </section>
+
+        <section>
           <h3>Emotes</h3>
           <p>
             Tap the <b>😀</b> button to react with 😂 🔥 😤 💀 👏 or 🤡. Everyone at the table sees it pop up by your seat. On a computer, the

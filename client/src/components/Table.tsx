@@ -10,6 +10,7 @@ import { EMOTES } from "../emotes";
 import { COLORS } from "../colors";
 import { playSound, toggleMute, useMuted } from "../sound";
 import { buzz } from "../haptics";
+import { deadlineFrom, useSecondsLeft } from "../useCountdown";
 import type { Card as CardData, GameView, RoomState, SeatView, SlapEntry } from "../types";
 import "./Table.css";
 
@@ -81,6 +82,8 @@ export default function Table({ room, game, myId }: Props) {
   const [stamp, setStamp] = useState<{ seat: number; key: number } | null>(null);
   const [burn, setBurn] = useState<Burn | null>(null);
   const [showRules, setShowRules] = useState(false);
+  // Public tables: seconds left before the current player's card plays itself
+  const turnSecs = useSecondsLeft(deadlineFrom(room.receivedAt, game.turnEndsIn));
   const [emotes, setEmotes] = useState<Record<number, { emoji: string; key: number }>>({}); // emotes showing by each seat
   const [emoteCooldown, setEmoteCooldown] = useState(false);
   const [tap, setTap] = useState<{ x: number; y: number; key: number } | null>(null); // ring where the table was tapped
@@ -294,6 +297,10 @@ export default function Table({ room, game, myId }: Props) {
     position: positionFor(index, n, viewFrom),
   }));
   const fxClass = (index: number) => (fx[index] ? `fx-${fx[index].kind}` : "");
+  const turnClock = (index: number) =>
+    turnSecs !== null && index === game.turn && !game.collecting ? (
+      <span className={`turn-clock ${turnSecs <= 3 ? "is-low" : ""}`}> · {turnSecs}s</span>
+    ) : null;
   const emoteFor = (index: number) =>
     emotes[index] ? (
       <span key={emotes[index].key} className="emote" aria-hidden="true">
@@ -415,7 +422,10 @@ export default function Table({ room, game, myId }: Props) {
                 <Avatar name={seat.name} color={color} size={30} />
                 <div style={{ minWidth: 0 }}>
                   <div className="mini-name">{seat.name}</div>
-                  <div className="mono dim small">{seat.status === "eliminated" ? "out" : seat.cardCount}</div>
+                  <div className="mono dim small">
+                    {seat.status === "eliminated" ? "out" : seat.cardCount}
+                    {turnClock(index)}
+                  </div>
                 </div>
               </div>
             ))}
@@ -440,6 +450,7 @@ export default function Table({ room, game, myId }: Props) {
                     </div>
                     <div className={`seat-sub ${isMe && isTurn ? "accent" : ""}`}>
                       {isMe && isTurn ? `Your turn · ${seat.cardCount} cards` : seatText(seat)}
+                      {turnClock(index)}
                     </div>
                   </div>
                   {seat.cardCount > 0 && <CardBack />}
@@ -523,6 +534,7 @@ export default function Table({ room, game, myId }: Props) {
                 <div className="seat-name">You</div>
                 <div className={`seat-sub ${isMyTurn ? "accent" : ""}`}>
                   {isMyTurn ? `Your turn · ${mySeat.cardCount} cards` : seatText(mySeat)}
+                  {turnClock(mySeatIndex)}
                 </div>
               </div>
               {playing && <Emotes className="emote-phone" onSend={sendEmote} coolingDown={emoteCooldown} />}
@@ -556,6 +568,7 @@ export default function Table({ room, game, myId }: Props) {
                   disabled={!canPlay}
                 >
                   {playLabel}
+                  {canPlay && turnSecs !== null && <span className={`kbd turn-kbd ${turnSecs <= 3 ? "is-low" : ""}`}>{turnSecs}s</span>}
                 </button>
                 <button
                   type="button"

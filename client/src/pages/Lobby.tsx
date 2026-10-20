@@ -4,6 +4,7 @@ import { SLAP_RULES } from "../rules";
 import { seatColor } from "../colors";
 import { Avatar, Brand, CopyIcon, CrownIcon, EyeIcon, HelpIcon, PlusIcon, ShareIcon, XIcon } from "../components/ui";
 import HowToPlay from "../components/HowToPlay";
+import { deadlineFrom, useSecondsLeft } from "../useCountdown";
 import type { RoomState } from "../types";
 
 type Props = { room: RoomState; myId: string; onLeave: () => void };
@@ -17,6 +18,7 @@ export default function Lobby({ room, myId, onLeave }: Props) {
   // The host's two-click buttons: which person, and whether we're removing them or making them host
   const [confirm, setConfirm] = useState<{ id: string; action: "kick" | "host" } | null>(null);
   const [hostNotice, setHostNotice] = useState(false); // "You're the host now"
+  const startsIn = useSecondsLeft(deadlineFrom(room.receivedAt, room.autoStartIn)); // public tables start by themselves
   const [showRules, setShowRules] = useState(false);
 
   const isHost = room.hostId === myId;
@@ -125,7 +127,10 @@ export default function Lobby({ room, myId, onLeave }: Props) {
         <main className="lobby-main">
           <section className="code-banner" aria-label="Invite">
             <div style={{ minWidth: 0 }}>
-              <div className="code-label">GAME CODE</div>
+              <div className="code-label">
+                GAME CODE
+                {room.isPublic && <span className="badge-public">PUBLIC</span>}
+              </div>
               <h1 className="code-big">{room.id}</h1>
               <div className="code-url">{link.replace(/^https?:\/\//, "")}</div>
             </div>
@@ -134,6 +139,28 @@ export default function Lobby({ room, myId, onLeave }: Props) {
               {useShareSheet ? "Share invite link" : copied ? "Copied!" : "Copy invite link"}
             </button>
           </section>
+
+          <label className={`public-row ${room.isPublic ? "is-on" : ""} ${isHost ? "" : "is-locked"}`}>
+            <input
+              type="checkbox"
+              role="switch"
+              className="sr-only"
+              checked={room.isPublic}
+              disabled={!isHost}
+              onChange={(e) => socket.emit("setPublic", e.target.checked)}
+            />
+            <span className="switch" aria-hidden="true" />
+            <span className="public-text">
+              <span className="public-title">{room.isPublic ? "Public table" : "Private table"}</span>
+              <span className="public-desc">
+                {room.isPublic
+                  ? "Listed on the home page, so anyone can join. The game starts on its own, and turns are timed (10 seconds)."
+                  : isHost
+                    ? "Only people with the link can join. Make it public to let anyone on ERS Online find it."
+                    : "Only people with the link can join."}
+              </span>
+            </span>
+          </label>
 
           <section>
             <h2 className="section-title">
@@ -171,7 +198,7 @@ export default function Lobby({ room, myId, onLeave }: Props) {
                     </div>
                     <div>
                       <div>Open seat</div>
-                      <div className="seat-card-sub">Send the link to fill it</div>
+                      <div className="seat-card-sub">{room.isPublic ? "Anyone online can join" : "Send the link to fill it"}</div>
                     </div>
                   </div>
                 )
@@ -225,15 +252,25 @@ export default function Lobby({ room, myId, onLeave }: Props) {
               >
                 Start game
               </button>
-              <span className="note">
-                {enoughPlayers
-                  ? `Deals 52 cards across ${room.players.length} players.`
-                  : "Need at least 2 players to start. Send the link to a friend."}
-              </span>
+              {startsIn !== null ? (
+                <span className="autostart" role="status">
+                  Starting by itself in <b>{startsIn}s</b>. Start now if everyone's here.
+                </span>
+              ) : (
+                <span className="note">
+                  {enoughPlayers
+                    ? `Deals 52 cards across ${room.players.length} players.`
+                    : room.isPublic
+                      ? "Waiting for a second player. Your table is listed on the home page."
+                      : "Need at least 2 players to start. Send the link to a friend."}
+                </span>
+              )}
             </div>
           ) : (
             <p className="waiting">
-              {isPlayer
+              {isPlayer && startsIn !== null
+                ? `The game starts in ${startsIn}s…`
+                : isPlayer
                 ? `Waiting for ${host?.name ?? "the host"} to start the game…`
                 : seatsOpen
                   ? "You're watching. Take a seat to play in this game."

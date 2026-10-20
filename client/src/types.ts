@@ -48,6 +48,7 @@ export type GameView = {
   winnerSeat: number | null;
   pilesPlayed: number;
   durationMs: number;
+  turnEndsIn: number | null; // public tables: ms left before your card plays itself
 };
 
 export type RoomState = {
@@ -59,7 +60,24 @@ export type RoomState = {
   spectators: Person[];
   maxPlayers: number;
   game: GameView | null;
+  isPublic: boolean; // listed on the home page so anyone can join
+  autoStartIn: number | null; // public lobbies: ms until the game starts by itself
+  lobbyReturnIn: number | null; // public tables: ms until the results screen goes back to the lobby
+  receivedAt?: number; // when this update arrived (added by the page, for countdowns)
 };
+
+// A public table, as listed on the home page
+export type PublicTable = {
+  id: string;
+  hostName: string;
+  players: number;
+  maxPlayers: number;
+  phase: "lobby" | "playing" | "finished";
+  rules: string[]; // which slap rules are on
+  startsIn: number | null;
+};
+
+export type TablesInfo = { tables: PublicTable[]; online: number };
 
 export type JoinReply = { ok: boolean; you?: string; error?: string; kicked?: boolean };
 

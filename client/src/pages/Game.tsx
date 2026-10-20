@@ -46,9 +46,11 @@ export default function Game() {
 
   // Update whenever the server sends new room info
   useEffect(() => {
-    socket.on("room", setRoom);
+    // Note when each update arrived, so countdowns (auto-start, turn timer) line up with the server
+    const onRoom = (r: RoomState) => setRoom({ ...r, receivedAt: Date.now() });
+    socket.on("room", onRoom);
     return () => {
-      socket.off("room", setRoom);
+      socket.off("room", onRoom);
     };
   }, []);
 

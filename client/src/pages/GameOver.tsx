@@ -2,6 +2,7 @@ import { socket } from "../socket";
 import { seatColor } from "../colors";
 import { Avatar, Brand } from "../components/ui";
 import type { GameView, RoomState, SeatView } from "../types";
+import { deadlineFrom, useSecondsLeft } from "../useCountdown";
 
 type Props = { room: RoomState; game: GameView; myId: string; onLeave: () => void };
 
@@ -31,6 +32,7 @@ function leader(seats: SeatView[], value: (s: SeatView) => number | null, pick: 
 
 export default function GameOver({ room, game, myId, onLeave }: Props) {
   const isHost = room.hostId === myId;
+  const backIn = useSecondsLeft(deadlineFrom(room.receivedAt, room.lobbyReturnIn)); // public tables only
   const host = room.players.find((p) => p.id === room.hostId);
   const enoughPlayers = room.players.length >= 2;
   const winnerIndex = game.winnerSeat;
@@ -159,7 +161,12 @@ export default function GameOver({ room, game, myId, onLeave }: Props) {
             Leave
           </button>
         </div>
-        {isHost && (
+        {backIn !== null && (
+          <p className="autostart center-self" role="status">
+            Back to the lobby in <b>{backIn}s</b>. The next game starts on its own.
+          </p>
+        )}
+        {isHost && backIn === null && (
           <p className="note center">
             {enoughPlayers
               ? "Play again keeps everyone seated with the same slap rules. Back to lobby lets people change seats and rules."

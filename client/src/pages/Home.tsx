@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { socket, useConnected } from "../socket";
+import { socket, playerToken, useConnected } from "../socket";
 import Card from "../components/Card";
 import HowToPlay from "../components/HowToPlay";
-import { Brand, EyeIcon } from "../components/ui";
+import OpenTables from "../components/OpenTables";
+import { BoltIcon, Brand, EyeIcon } from "../components/ui";
 import type { Card as CardData, RoomPeek } from "../types";
 import "./Pages.css";
 
@@ -23,6 +24,7 @@ export default function Home() {
   const [codeError, setCodeError] = useState("");
   const [creating, setCreating] = useState(false);
   const [showRules, setShowRules] = useState(false);
+  const [finding, setFinding] = useState(false);
 
   // Make sure there's a name, and remember it for next time
   function checkName(): boolean {
@@ -42,6 +44,21 @@ export default function Home() {
     socket.emit("createRoom", (roomId: string) => {
       navigate(`/game/${roomId}`, { state: { intent: "play" } });
     });
+  }
+
+  // Quick play: the server finds the fullest open public table, or opens a new one
+  function quickPlay() {
+    if (!checkName() || finding) return;
+    setFinding(true);
+    socket.emit("quickPlay", playerToken, (roomId: string) => {
+      navigate(`/game/${roomId}`, { state: { intent: "play" } });
+    });
+  }
+
+  // Joining (or watching) a table from the Open tables list
+  function joinTable(roomId: string, watch: boolean) {
+    if (!checkName()) return;
+    navigate(`/game/${roomId}`, { state: { intent: watch ? "watch" : "play" } });
   }
 
   function goToCode(intent: "play" | "watch") {
@@ -85,7 +102,7 @@ export default function Home() {
               <span className="accent">Keep track.</span>
             </h1>
             <p className="home-lead">
-              The fast card-slapping game, online with your friends. Make a table, send the link, and play.
+              The fast card-slapping game, online. Make a table and send the link to friends, or jump into an open table with anyone.
             </p>
           </div>
 
@@ -117,6 +134,12 @@ export default function Home() {
             {!connected && (
               <p className="note">This can take up to a minute if nobody has played in a while.</p>
             )}
+
+            <button type="button" className="btn btn-lg btn-block btn-quick" onClick={quickPlay} disabled={!connected || finding}>
+              <BoltIcon />
+              {finding ? "Finding a table…" : "Quick play"}
+            </button>
+            <p className="note center">Join an open table with anyone online.</p>
 
             <div className="divider-text">or join a friend</div>
 
@@ -156,6 +179,8 @@ export default function Home() {
           </div>
         </div>
       </main>
+
+      <OpenTables connected={connected} onJoin={joinTable} />
 
       <section id="how" className="how" aria-label="How to play">
         <div className="how-step">
