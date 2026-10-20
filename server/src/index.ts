@@ -31,6 +31,7 @@ type Room = {
   topCardAt: number; // when the server sent out the current top card
   kicked: Set<string>; // secret IDs of people the host removed; they can't rejoin this game
   isPublic: boolean; // listed on the home page so anyone can join
+  maxPlayers: number; // table size the host picked: 2, 3 or 4 seats
   createdAt: number;
   turnTimer: ReturnType<typeof setTimeout> | null; // public games: plays your card if you wait too long
   turnKey: string; // which turn the timer is for
@@ -44,7 +45,8 @@ type Room = {
 type JoinRequest = { roomId: string; token: string; name?: string; spectate?: boolean };
 type JoinReply = { ok: boolean; you?: string; error?: string; kicked?: boolean };
 
-const MAX_PLAYERS = 4;
+const MAX_PLAYERS = 4; // the biggest table; hosts can pick 2, 3 or 4 seats
+const MIN_PLAYERS = 2;
 const RECONNECT_GRACE_MS = 30_000; // how long a seat is held after disconnecting
 const AWARD_DELAY_MS = 1000; // pause before a failed challenge's pile is collected
 const SLAP_WINDOW_MS = 100; // shortest wait to collect correct slaps before picking the fastest
@@ -54,8 +56,7 @@ const EMOTES = ["😂", "🔥", "😤", "💀", "👏", "🤡"]; // same list as
 const EMOTE_COOLDOWN_MS = 1000; // at most one emote a second per player
 const PING_SLACK_MS = 40; // allowance for ping wobbling between measurements
 const TURN_TIME_MS = 10_000; // public tables: you have 10 seconds to play, then your card plays itself
-const AUTO_START_MS = 20_000; // public tables: start 20 seconds after a second player sits down...
-const AUTO_START_FULL_MS = 5_000; // ...or 5 seconds once all 4 seats are full
+const AUTO_START_MS = 5_000; // public tables: start 5 seconds after every seat is filled
 const RESULTS_MS = 25_000; // public tables: show the results for 25 seconds, then back to the lobby
 
 // Block offensive names (it also catches tricks like swapping letters for numbers).
@@ -85,6 +86,7 @@ function makeRoom(isPublic: boolean): Room {
     topCardAt: 0,
     kicked: new Set(),
     isPublic,
+    maxPlayers: MAX_PLAYERS,
     createdAt: Date.now(),
     turnTimer: null,
     turnKey: "",
@@ -177,7 +179,7 @@ function publicRoom(room: Room) {
     settings: room.settings,
     players: room.players.map(publicPerson),
     spectators: room.spectators.map(publicPerson),
-    maxPlayers: MAX_PLAYERS,
+    maxPlayers: room.maxPlayers,
     game: publicGame(room),
     isPublic: room.isPublic,
     autoStartIn: room.autoStartAt === null ? null : Math.max(0, room.autoStartAt - Date.now()),
@@ -192,10 +194,10 @@ function sendRoom(room: Room) {
 
 // ---------- Public tables ----------
 
-// Public lobbies start by themselves, so nobody waits on an idle host:
-// 20 seconds after a second player sits down, or 5 seconds once all seats are full.
+// Public lobbies start by themselves once every seat (of the size the host picked) is filled,
+// so nobody waits on an idle host. The host can still start early.
 function updateAutoStart(room: Room) {
-  const eligible = room.isPublic && room.phase === "lobby" && room.players.length >= 2;
+  const eligible = room.isPublic && room.phase === "lobby" && room.players.length >= room.maxPlayers;
   if (!eligible) {
     if (room.autoStartTimer) clearTimeout(room.autoStartTimer);
     room.autoStartTimer = null;
@@ -203,16 +205,14 @@ function updateAutoStart(room: Room) {
     return;
   }
   const now = Date.now();
-  const full = room.players.length >= MAX_PLAYERS;
-  let target = room.autoStartAt ?? now + (full ? AUTO_START_FULL_MS : AUTO_START_MS);
-  if (full) target = Math.min(target, now + AUTO_START_FULL_MS);
-  if (target === room.autoStartAt && room.autoStartTimer) return; // already counting down
+  if (room.autoStartAt !== null && room.autoStartTimer) return; // already counting down
+  const target = now + AUTO_START_MS;
   if (room.autoStartTimer) clearTimeout(room.autoStartTimer);
   room.autoStartAt = target;
   room.autoStartTimer = setTimeout(() => {
     room.autoStartTimer = null;
     room.autoStartAt = null;
-    if (room.isPublic && room.phase === "lobby" && room.players.length >= 2) startNewGame(room);
+    if (room.isPublic && room.phase === "lobby" && room.players.length >= MIN_PLAYERS) startNewGame(room);
   }, target - now);
 }
 
@@ -275,7 +275,7 @@ function tableSummary(room: Room) {
     id: room.id,
     hostName: host?.name ?? room.players[0]?.name ?? "",
     players: room.players.length,
-    maxPlayers: MAX_PLAYERS,
+    maxPlayers: room.maxPlayers,
     phase: room.phase,
     rules: (Object.keys(room.settings) as (keyof Settings)[]).filter((k) => room.settings[k]),
     startsIn: room.autoStartAt === null ? null : Math.max(0, room.autoStartAt - Date.now()),
@@ -480,7 +480,7 @@ io.on("connection", (socket) => {
     if (typeof reply !== "function") return;
     const now = Date.now();
     const open = [...rooms.values()]
-      .filter((r) => r.isPublic && r.phase === "lobby" && r.players.length < MAX_PLAYERS)
+      .filter((r) => r.isPublic && r.phase === "lobby" && r.players.length < r.maxPlayers)
       .filter((r) => !(typeof token === "string" && r.kicked.has(token)))
       // a brand-new table counts too, so two people pressing Quick play at once end up together
       .filter((r) => r.players.length > 0 || now - r.createdAt < 15_000)
@@ -497,7 +497,7 @@ io.on("connection", (socket) => {
     reply({
       hostName: host?.name ?? null,
       players: room.players.map((p) => p.name),
-      maxPlayers: MAX_PLAYERS,
+      maxPlayers: room.maxPlayers,
       phase: room.phase,
     });
   });
@@ -530,7 +530,7 @@ io.on("connection", (socket) => {
       if (nameFilter.hasMatch(name)) return reply({ ok: false, error: "Please choose a different name." });
 
       person = { id: randomUUID(), token, name: name.trim().slice(0, 16), socketId: socket.id, ping: rtt };
-      const canSit = !spectate && room.phase === "lobby" && room.players.length < MAX_PLAYERS;
+      const canSit = !spectate && room.phase === "lobby" && room.players.length < room.maxPlayers;
       if (canSit) {
         room.players.push(person);
         if (!room.hostId) room.hostId = person.id; // first player becomes host
@@ -551,7 +551,7 @@ io.on("connection", (socket) => {
   socket.on("takeSeat", () => {
     const room = currentRoom;
     const person = me;
-    if (!room || !person || room.phase !== "lobby" || room.players.length >= MAX_PLAYERS) return;
+    if (!room || !person || room.phase !== "lobby" || room.players.length >= room.maxPlayers) return;
     if (!room.spectators.includes(person)) return;
     room.spectators = room.spectators.filter((p) => p !== person);
     room.players.push(person);
@@ -616,6 +616,17 @@ io.on("connection", (socket) => {
     const person = me;
     if (!room || !person || room.hostId !== person.id || room.phase !== "lobby") return;
     room.isPublic = value === true;
+    sendRoom(room);
+  });
+
+  // The host picked the table size (2, 3 or 4 seats). Can't go below the number already seated.
+  socket.on("setTableSize", (size: unknown) => {
+    const room = currentRoom;
+    const person = me;
+    if (!room || !person || room.hostId !== person.id || room.phase !== "lobby") return;
+    if (typeof size !== "number" || !Number.isInteger(size)) return;
+    if (size < MIN_PLAYERS || size > MAX_PLAYERS || size < room.players.length) return;
+    room.maxPlayers = size;
     sendRoom(room);
   });
 

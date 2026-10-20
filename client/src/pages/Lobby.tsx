@@ -24,6 +24,8 @@ export default function Lobby({ room, myId, onLeave }: Props) {
   const isHost = room.hostId === myId;
   const isPlayer = room.players.some((p) => p.id === myId);
   const seatsOpen = room.players.length < room.maxPlayers;
+  const seatsLeft = room.maxPlayers - room.players.length;
+  const moreText = `${seatsLeft} more ${seatsLeft === 1 ? "player" : "players"}`;
   const enoughPlayers = room.players.length >= 2;
   const host = room.players.find((p) => p.id === room.hostId);
   const link = `${window.location.origin}/game/${room.id}`;
@@ -154,7 +156,7 @@ export default function Lobby({ room, myId, onLeave }: Props) {
               <span className="public-title">{room.isPublic ? "Public table" : "Private table"}</span>
               <span className="public-desc">
                 {room.isPublic
-                  ? "Listed on the home page, so anyone can join. The game starts on its own, and turns are timed (10 seconds)."
+                  ? "Listed on the home page, so anyone can join. The game starts on its own once every seat is filled, and turns are timed (10 seconds)."
                   : isHost
                     ? "Only people with the link can join. Make it public to let anyone on ERS Online find it."
                     : "Only people with the link can join."}
@@ -163,9 +165,30 @@ export default function Lobby({ room, myId, onLeave }: Props) {
           </label>
 
           <section>
-            <h2 className="section-title">
-              Players <span className="dim" style={{ fontWeight: 500 }}>{room.players.length} of {room.maxPlayers}</span>
-            </h2>
+            <div className="players-head">
+              <h2 className="section-title">
+                Players <span className="dim" style={{ fontWeight: 500 }}>{room.players.length} of {room.maxPlayers}</span>
+              </h2>
+              {isHost && (
+                <div className="size-picker" role="radiogroup" aria-label="Table size">
+                  <span className="size-label">Seats</span>
+                  {[2, 3, 4].map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      role="radio"
+                      aria-checked={room.maxPlayers === n}
+                      className={`size-opt ${room.maxPlayers === n ? "is-on" : ""}`}
+                      disabled={n < room.players.length}
+                      title={n < room.players.length ? "More people are already seated" : `${n} seats`}
+                      onClick={() => socket.emit("setTableSize", n)}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <div className="seat-grid">
               {seats.map((p, i) =>
                 p ? (
@@ -258,10 +281,10 @@ export default function Lobby({ room, myId, onLeave }: Props) {
                 </span>
               ) : (
                 <span className="note">
-                  {enoughPlayers
-                    ? `Deals 52 cards across ${room.players.length} players.`
-                    : room.isPublic
-                      ? "Waiting for a second player. Your table is listed on the home page."
+                  {room.isPublic
+                    ? `Waiting for ${moreText}. The game starts on its own once every seat is filled${enoughPlayers ? ", or you can start now." : "."}`
+                    : enoughPlayers
+                      ? `Deals 52 cards across ${room.players.length} players.`
                       : "Need at least 2 players to start. Send the link to a friend."}
                 </span>
               )}
@@ -270,6 +293,8 @@ export default function Lobby({ room, myId, onLeave }: Props) {
             <p className="waiting">
               {isPlayer && startsIn !== null
                 ? `The game starts in ${startsIn}s…`
+                : isPlayer && room.isPublic
+                ? `Waiting for ${moreText}. The game starts on its own once every seat is filled.`
                 : isPlayer
                 ? `Waiting for ${host?.name ?? "the host"} to start the game…`
                 : seatsOpen

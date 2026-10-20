@@ -16,7 +16,8 @@ function status(t: PublicTable) {
   if (t.phase === "playing") return "In a game";
   if (t.players >= t.maxPlayers) return "Full · starting now";
   if (t.startsIn !== null) return `Starts in ~${Math.ceil(t.startsIn / 1000)}s`;
-  return "Waiting for players";
+  const left = t.maxPlayers - t.players;
+  return `${left} more ${left === 1 ? "player" : "players"} to start`;
 }
 
 // The home page's list of public tables anyone can join, refreshed every few seconds

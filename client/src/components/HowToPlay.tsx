@@ -182,7 +182,8 @@ export default function HowToPlay({ open, onClose, settings }: Props) {
             </li>
             <li>Hosts can make any table <b>public</b> in the lobby. Public tables are listed on the home page.</li>
             <li>
-              Public games start on their own: 20 seconds after a second player sits down, or 5 seconds once all four seats are full.
+              The host picks the table size: 2, 3 or 4 seats. Public games start on their own 5 seconds after every seat is filled, and the
+              host can start early.
             </li>
             <li>
               On public tables, turns are timed. If it's your turn and you don't play within <b>10 seconds</b>, your card plays itself.

@@ -18,7 +18,7 @@ ERS Online is a real-time multiplayer version. One person creates a table, share
 ## Features
 
 - **Share-a-link tables:** up to 4 players and unlimited watchers per game, joined with a short code like `9PK3AK`
-- **Play with strangers:** **Quick play** drops you into an open table, and public tables are listed on the home page. Public games start on their own, turns are timed (10 seconds) so nobody can stall, and offensive names are blocked
+- **Play with strangers:** **Quick play** drops you into an open table, and public tables are listed on the home page. The host picks the table size (2–4 seats), public games start on their own once every seat is filled, turns are timed (10 seconds) so nobody can stall, and offensive names are blocked
 - **House rules:** the host turns slap rules on or off before each game: doubles, sandwiches, top and bottom, tens, marriages, "6 7", and ladders (which wrap around, so K-A-2 counts)
 - **Standard ERS play:** face-card challenges (J, Q, K, A give 1–4 tries), burning a card on a wrong slap, and slapping back in after running out of cards
 - **Reaction times:** every slap shows how fast it was, in milliseconds
