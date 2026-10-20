@@ -64,6 +64,17 @@ button:disabled { cursor: not-allowed; }
 .brand { display: flex; align-items: baseline; gap: 6px; }
 .brand-mark { font-size: 26px; font-weight: 800; color: var(--accent); letter-spacing: -0.5px; }
 .brand-sub { font-size: 18px; font-weight: 500; color: var(--muted); }
+
+/* Little secrets for Narae ♥ */
+.name-heart { margin-left: 5px; font-size: 0.8em; color: #ff7a9a; }
+.secret-logo { position: relative; cursor: default; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+.secret-note {
+  position: absolute; top: calc(100% + 10px); left: 0; z-index: 30; white-space: nowrap; padding: 8px 14px; border-radius: 999px;
+  background: #2a1a20; border: 1px solid rgba(255, 122, 154, 0.45); color: #ffd6e0; font-size: 14px; font-weight: 600;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45); animation: secret-in 0.35s ease-out;
+}
+@keyframes secret-in { from { opacity: 0; transform: translateY(-6px) scale(0.96); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .secret-note { animation: none; } }
 .avatar { border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; flex: none; }
 .dim { color: var(--dim); }
 .small { font-size: 12px; margin: 0; }

@@ -1,6 +1,6 @@
 import { socket } from "../socket";
 import { seatColor } from "../colors";
-import { Avatar, Brand } from "../components/ui";
+import { Avatar, Brand, NameHeart } from "../components/ui";
 import type { GameView, RoomState, SeatView } from "../types";
 import { deadlineFrom, useSecondsLeft } from "../useCountdown";
 import ChatPanel from "../components/ChatPanel";
@@ -80,7 +80,10 @@ export default function GameOver({ room, game, myId, onLeave }: Props) {
               <Avatar name={winner.name} color={seatColor(winnerIndex)} size={96} />
             </div>
           )}
-          <h1 className="over-title">{winner ? (iWon ? "You win!" : `${winner.name} wins`) : "Game over"}</h1>
+          <h1 className="over-title">
+            {winner ? (iWon ? "You win!" : `${winner.name} wins`) : "Game over"}
+            {winner && <NameHeart name={winner.name} />}
+          </h1>
           <p className="over-sub">
             Last one standing after {minutes(game.durationMs)} and {game.pilesPlayed} {game.pilesPlayed === 1 ? "pile" : "piles"}.
           </p>

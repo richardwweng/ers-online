@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { socket } from "../socket";
 import { SLAP_RULES } from "../rules";
 import { seatColor } from "../colors";
-import { Avatar, Brand, CopyIcon, CrownIcon, EyeIcon, HelpIcon, PlusIcon, ShareIcon, XIcon } from "../components/ui";
+import { Avatar, Brand, CopyIcon, NameHeart, CrownIcon, EyeIcon, HelpIcon, PlusIcon, ShareIcon, XIcon } from "../components/ui";
 import HowToPlay from "../components/HowToPlay";
 import ChatPanel from "../components/ChatPanel";
 import { deadlineFrom, useSecondsLeft } from "../useCountdown";
@@ -198,6 +198,7 @@ export default function Lobby({ room, myId, onLeave }: Props) {
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <div className="seat-card-name">
                         {p.name}
+                        <NameHeart name={p.name} />
                         {p.id === myId && <span className="dim" style={{ fontWeight: 500 }}> (you)</span>}
                       </div>
                       {!p.connected ? (
@@ -240,6 +241,7 @@ export default function Lobby({ room, myId, onLeave }: Props) {
                     {room.spectators.map((s) => (
                       <span key={s.id} className={`watch-chip ${s.connected ? "" : "is-away"}`}>
                         {s.name}
+                        <NameHeart name={s.name} />
                         {s.id === myId ? " (you)" : ""}
                         {!s.connected && " · reconnecting"}
                         {kickButton(s.id, s.name, true)}

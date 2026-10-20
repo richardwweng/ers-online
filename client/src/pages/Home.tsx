@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router";
 import { socket, playerToken, useConnected } from "../socket";
 import Card from "../components/Card";
@@ -25,6 +25,23 @@ export default function Home() {
   const [creating, setCreating] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [finding, setFinding] = useState(false);
+
+  // A secret: tap the logo 5 times quickly ♥
+  const [showNote, setShowNote] = useState(false);
+  const logoTaps = useRef<number[]>([]);
+  function tapLogo() {
+    const now = Date.now();
+    logoTaps.current = [...logoTaps.current.filter((t) => now - t < 2500), now];
+    if (logoTaps.current.length >= 5) {
+      logoTaps.current = [];
+      setShowNote(true);
+    }
+  }
+  useEffect(() => {
+    if (!showNote) return;
+    const t = setTimeout(() => setShowNote(false), 4500);
+    return () => clearTimeout(t);
+  }, [showNote]);
 
   // Make sure there's a name, and remember it for next time
   function checkName(): boolean {
@@ -80,7 +97,14 @@ export default function Home() {
   return (
     <div className="pg pg-felt">
       <header className="pg-header">
-        <Brand />
+        <div className="secret-logo" onClick={tapLogo}>
+          <Brand />
+          {showNote && (
+            <span className="secret-note" role="status">
+              made for my amazing gf Narae ♥
+            </span>
+          )}
+        </div>
         <div className="pg-header-right">
           <button type="button" className="link-quiet link-btn" onClick={() => setShowRules(true)}>
             How to play

@@ -3,7 +3,7 @@ import type { CSSProperties } from "react";
 import { socket, useConnected } from "../socket";
 import { SLAP_RULES } from "../rules";
 import Card, { CardBack } from "./Card";
-import { Avatar, HelpIcon, SoundOffIcon, SoundOnIcon } from "./ui";
+import { Avatar, HelpIcon, NameHeart, SoundOffIcon, SoundOnIcon } from "./ui";
 import HowToPlay from "./HowToPlay";
 import Emotes from "./Emotes";
 import ChatPanel from "./ChatPanel";
@@ -453,7 +453,10 @@ export default function Table({ room, game, myId }: Props) {
                 {emoteFor(index)}
                 <Avatar name={seat.name} color={color} size={30} />
                 <div style={{ minWidth: 0 }}>
-                  <div className="mini-name">{seat.name}</div>
+                  <div className="mini-name">
+                    {seat.name}
+                    <NameHeart name={seat.name} />
+                  </div>
                   <div className="mono dim small">
                     {seat.status === "eliminated" ? "out" : seat.cardCount}
                     {turnClock(index)}
@@ -478,6 +481,7 @@ export default function Table({ room, game, myId }: Props) {
                   <div>
                     <div className="seat-name">
                       {seat.name}
+                      <NameHeart name={seat.name} />
                       {isMe && <span className="dim" style={{ fontWeight: 500 }}> (you)</span>}
                     </div>
                     <div className={`seat-sub ${isMe && isTurn ? "accent" : ""}`}>
@@ -563,7 +567,10 @@ export default function Table({ room, game, myId }: Props) {
               {emoteFor(mySeatIndex)}
               <Avatar name={mySeat.name} color={myColor} size={40} />
               <div style={{ flex: 1 }}>
-                <div className="seat-name">You</div>
+                <div className="seat-name">
+                  You
+                  <NameHeart name={mySeat.name} />
+                </div>
                 <div className={`seat-sub ${isMyTurn ? "accent" : ""}`}>
                   {isMyTurn ? `Your turn · ${mySeat.cardCount} cards` : seatText(mySeat)}
                   {turnClock(mySeatIndex)}

@@ -11,6 +11,12 @@ export function Brand() {
   );
 }
 
+// A tiny heart next to anyone named Narae ♥
+export function NameHeart({ name }: { name: string }) {
+  if (name.trim().toLowerCase() !== "narae") return null;
+  return <span className="name-heart" aria-label="heart">♥</span>;
+}
+
 // A colored circle with the player's first letter
 export function Avatar({ name, color, size = 46 }: { name: string; color: Color; size?: number }) {
   return (
