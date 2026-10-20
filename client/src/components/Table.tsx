@@ -6,6 +6,8 @@ import Card, { CardBack } from "./Card";
 import { Avatar, HelpIcon, SoundOffIcon, SoundOnIcon } from "./ui";
 import HowToPlay from "./HowToPlay";
 import Emotes from "./Emotes";
+import ChatPanel from "./ChatPanel";
+import { useChat } from "../chat";
 import { EMOTES } from "../emotes";
 import { COLORS } from "../colors";
 import { playSound, toggleMute, useMuted } from "../sound";
@@ -82,6 +84,23 @@ export default function Table({ room, game, myId }: Props) {
   const [stamp, setStamp] = useState<{ seat: number; key: number } | null>(null);
   const [burn, setBurn] = useState<Burn | null>(null);
   const [showRules, setShowRules] = useState(false);
+
+  // Phone chat drawer, with a count of messages that came in while it was closed
+  const chat = useChat();
+  const latestChatId = chat.messages.at(-1)?.id ?? 0;
+  const [chatOpen, setChatOpen] = useState(false);
+  const [seenChatId, setSeenChatId] = useState(latestChatId);
+  const unread = chatOpen
+    ? 0
+    : chat.messages.filter((m) => m.id > seenChatId && m.personId !== myId && !chat.muted.has(m.personId)).length;
+  const openChat = () => {
+    setChatOpen(true);
+    setSeenChatId(latestChatId);
+  };
+  const closeChat = () => {
+    setChatOpen(false);
+    setSeenChatId(latestChatId);
+  };
   // Public tables: seconds left before the current player's card plays itself
   const turnSecs = useSecondsLeft(deadlineFrom(room.receivedAt, game.turnEndsIn));
   const [emotes, setEmotes] = useState<Record<number, { emoji: string; key: number }>>({}); // emotes showing by each seat
@@ -344,6 +363,16 @@ export default function Table({ room, game, myId }: Props) {
           </span>
           <button
             type="button"
+            className="ghost-btn icon-btn chat-toggle"
+            onClick={openChat}
+            aria-label={unread > 0 ? `Chat, ${unread} new` : "Chat"}
+            title="Chat"
+          >
+            <span aria-hidden="true">💬</span>
+            {unread > 0 && <span className="chat-badge">{unread > 9 ? "9+" : unread}</span>}
+          </button>
+          <button
+            type="button"
             className="ghost-btn icon-btn"
             onClick={() => setShowRules(true)}
             aria-label="How to play"
@@ -389,6 +418,7 @@ export default function Table({ room, game, myId }: Props) {
 
       <div className="tp-body">
         {/* Left: slap history */}
+        <div className="tp-left">
         <aside className="panel tp-history">
           <h2 className="panel-title">Slap history</h2>
           {history.length === 0 ? (
@@ -407,6 +437,8 @@ export default function Table({ room, game, myId }: Props) {
           )}
           <p className="dim small">Reaction time from when the card hit your screen.</p>
         </aside>
+        <ChatPanel room={room} myId={myId} variant="panel" blurOnSend />
+        </div>
 
         {/* Center: the table */}
         <div className="tp-center">
@@ -637,6 +669,13 @@ export default function Table({ room, game, myId }: Props) {
           )}
         </aside>
       </div>
+
+      {chatOpen && (
+        <>
+          <div className="chat-backdrop" onClick={closeChat} aria-hidden="true" />
+          <ChatPanel room={room} myId={myId} variant="drawer" blurOnSend onClose={closeChat} />
+        </>
+      )}
 
       <HowToPlay
         open={showRules}

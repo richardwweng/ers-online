@@ -1,0 +1,64 @@
+/* ---------- Chat ---------- */
+.chat {
+  display: flex; flex-direction: column; min-height: 0; padding: 16px; border-radius: 18px;
+  background: var(--panel); border: 1px solid var(--line);
+}
+.chat-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.chat-title { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: 0.4px; color: #c9d4cd; }
+.chat-hint { font-size: 11px; color: var(--dim); }
+.chat-close {
+  margin-left: auto; width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 10px; border: 1px solid var(--line-2); background: transparent; color: #c9d4cd;
+}
+
+.chat-list { flex: 1 1 auto; min-height: 60px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 4px; overscroll-behavior: contain; }
+.chat-empty { margin: auto 0; text-align: center; font-size: 13px; color: var(--dim); }
+.chat-msg { font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; color: #dfe7e2; }
+.chat-msg.is-quick .chat-text { padding: 1px 8px; border-radius: 999px; background: var(--panel-2); font-weight: 600; }
+.chat-name { margin-right: 6px; padding: 0; border: 0; background: none; font: 700 14px var(--font); cursor: pointer; }
+span.chat-name { cursor: default; }
+.chat-menu { display: flex; gap: 6px; margin-top: 4px; }
+.chat-menu-btn { padding: 4px 10px; border-radius: 8px; border: 1px solid #7e1f24; background: #3a1d20; color: #ff9a9a; font: 600 12px var(--font); cursor: pointer; }
+.chat-menu-btn.ghost { border-color: var(--line-2); background: transparent; color: #c9d4cd; }
+.chat-muted { align-self: flex-start; margin-top: 6px; padding: 0; border: 0; background: none; color: var(--dim); font: 12px var(--font); text-decoration: underline; cursor: pointer; }
+.chat-error { margin: 6px 0 0; font-size: 12px; color: #ff9a9a; }
+
+.chat-form { display: flex; gap: 6px; margin-top: 10px; }
+.chat-input {
+  flex: 1; min-width: 0; height: 40px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line-2);
+  background: #0e1412; color: var(--text); font: 14px var(--font);
+}
+.chat-input:focus { outline: none; border-color: rgba(242, 210, 122, 0.6); }
+.chat-send {
+  height: 40px; padding: 0 14px; border: 0; border-radius: 10px; background: var(--accent); color: #1b1608; font: 700 14px var(--font); cursor: pointer;
+}
+.chat-send:disabled { opacity: 0.4; cursor: default; }
+.chat-quick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.chat-chip {
+  padding: 6px 10px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--panel-2); color: #dfe7e2;
+  font: 600 12px var(--font); cursor: pointer; touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+.chat-chip:hover { border-color: rgba(242, 210, 122, 0.5); color: var(--accent); }
+
+/* Lobby and results: a fixed-height box in the page */
+.chat-inline { height: 300px; }
+
+/* Phone: a sheet that slides up from the bottom */
+.chat-backdrop { position: fixed; inset: 0; z-index: 40; background: rgba(4, 8, 6, 0.55); animation: chat-fade 0.15s ease-out; }
+.chat-drawer {
+  position: fixed; left: 8px; right: 8px; bottom: 8px; z-index: 41; height: min(60dvh, 460px);
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5); animation: chat-up 0.18s ease-out;
+}
+/* On a computer (short screens), the slide-up chat is a neat panel in the corner, not the full width */
+@media (min-width: 761px) { .chat-drawer { left: 16px; right: auto; width: 360px; } }
+@keyframes chat-up { from { transform: translateY(24px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes chat-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* The 💬 button on phones, with a count of new messages */
+.chat-toggle { position: relative; font-size: 18px; }
+.chat-badge {
+  position: absolute; top: -6px; right: -6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
+  background: var(--danger); color: #fff; font: 700 11px/18px var(--font); text-align: center;
+}
+
+@media (prefers-reduced-motion: reduce) { .chat-drawer, .chat-backdrop { animation: none; } }

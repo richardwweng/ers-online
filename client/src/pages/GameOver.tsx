@@ -3,6 +3,7 @@ import { seatColor } from "../colors";
 import { Avatar, Brand } from "../components/ui";
 import type { GameView, RoomState, SeatView } from "../types";
 import { deadlineFrom, useSecondsLeft } from "../useCountdown";
+import ChatPanel from "../components/ChatPanel";
 
 type Props = { room: RoomState; game: GameView; myId: string; onLeave: () => void };
 
@@ -173,6 +174,9 @@ export default function GameOver({ room, game, myId, onLeave }: Props) {
               : "You need 2 seated players to play again. Go back to the lobby to invite someone."}
           </p>
         )}
+        <div className="over-chat">
+          <ChatPanel room={room} myId={myId} variant="inline" />
+        </div>
       </main>
     </div>
   );

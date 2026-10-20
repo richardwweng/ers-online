@@ -15,6 +15,15 @@
 .tp-body { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; }
 /* Slap history never makes the page taller than the table; the oldest slaps get cut off at the bottom */
 .tp-history { flex: 1 1 240px; max-width: 290px; max-height: calc(var(--felt-h) + 80px); display: flex; flex-direction: column; overflow: hidden; }
+/* Left column: slap history on top, chat below, together no taller than the table */
+.tp-left { flex: 1 1 240px; max-width: 290px; height: calc(var(--felt-h) + 80px); display: flex; flex-direction: column; gap: 14px; min-height: 0; }
+/* Slap history shows the 6 newest slaps; chat gets all the space below (at least 200px) */
+.tp-left .tp-history { flex: 0 0 auto; max-width: none; max-height: none; }
+.tp-left .history { gap: 6px; }
+.tp-left .history li { padding: 6px 10px; }
+.tp-left .history li:nth-child(n + 7) { display: none; }
+.tp-left .chat { flex: 1 1 0; min-height: 200px; }
+.tp-header-right .chat-toggle { display: none; }
 .tp-history .history { flex: 0 1 auto; min-height: 0; overflow: hidden; }
 .tp-history > p { flex: none; }
 .tp-center { flex: 999 1 600px; min-width: 0; display: flex; flex-direction: column; gap: 18px; }
@@ -210,6 +219,15 @@
   .felt-center { gap: 4px; }
 }
 
+/* Shorter screens: not enough room for 6 slaps and a useful chat box (about 200px),
+   so chat moves behind the 💬 button and slides up, like on phones */
+@media (min-width: 761px) and (max-height: 669px) {
+  .tp-left .chat { display: none; }
+  .tp-left .tp-history { flex: 0 1 auto; min-height: 0; }
+  .tp-left .history li:nth-child(n + 7) { display: flex; } /* chat is tucked away, so history can use the whole column */
+  .tp-header-right .chat-toggle { display: inline-flex; }
+}
+
 /* Short screens (small laptops, zoomed-in browsers): tighten the table so it still fits */
 @media (min-width: 761px) and (max-height: 760px) {
   .tp { padding-top: 12px; padding-bottom: 14px; gap: 12px; }
@@ -236,10 +254,11 @@
   /* Phone header: brand and buttons on top, the room code and invite link on a full row below */
   .room-pill { order: 3; flex-basis: 100%; justify-content: space-between; }
   .room-pill .room-code { margin-right: auto; }
-  .tp-history, .tp-side, .felt .seat, .kbd { display: none; }
+  .tp-history, .tp-left, .tp-side, .felt .seat, .kbd { display: none; }
+  .tp-header-right .chat-toggle { display: inline-flex; }
   .tp-opponents { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; }
   .tp-me, .tp-last, .tp-rule-chips { display: flex; }
-  .tp { --felt-h: clamp(210px, calc(100dvh - 450px), 330px); }
+  .tp { --felt-h: clamp(210px, calc(100dvh - 480px), 330px); } /* everything else on a phone takes about 480px */
   .felt { border-width: 8px; border-radius: 32px; }
   .burn-card-wrap[data-from] { --fx: 0px; }
   .burn-show { gap: 4px; }

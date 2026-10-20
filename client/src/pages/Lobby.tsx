@@ -4,6 +4,7 @@ import { SLAP_RULES } from "../rules";
 import { seatColor } from "../colors";
 import { Avatar, Brand, CopyIcon, CrownIcon, EyeIcon, HelpIcon, PlusIcon, ShareIcon, XIcon } from "../components/ui";
 import HowToPlay from "../components/HowToPlay";
+import ChatPanel from "../components/ChatPanel";
 import { deadlineFrom, useSecondsLeft } from "../useCountdown";
 import type { RoomState } from "../types";
 
@@ -302,6 +303,8 @@ export default function Lobby({ room, myId, onLeave }: Props) {
                   : "You're watching this table."}
             </p>
           )}
+
+          <ChatPanel room={room} myId={myId} variant="inline" />
         </main>
 
         <aside className="rules-panel">

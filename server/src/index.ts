@@ -1,7 +1,7 @@
 import { createServer } from "http";
 import { Server } from "socket.io";
 import { randomUUID } from "crypto";
-import { RegExpMatcher, englishDataset, englishRecommendedTransformers } from "obscenity";
+import { RegExpMatcher, TextCensor, asteriskCensorStrategy, englishDataset, englishRecommendedTransformers } from "obscenity";
 import type { Settings, GameState } from "./engine";
 import { createGame, playCard, isValidSlap, wrongSlap, awardPile, forfeit } from "./engine";
 
@@ -13,7 +13,11 @@ type Person = {
   leaveTimer?: ReturnType<typeof setTimeout>;
   ping: number; // round-trip time to this player's browser, in ms (0 until measured)
   lastEmoteAt?: number; // when they last sent an emote (to stop spam)
+  chatTimes: number[]; // when they sent their recent chat messages (for slow-mode)
 };
+
+// One chat message. `kind: "quick"` is a preset phrase (the only kind allowed on public tables).
+type ChatMessage = { id: number; personId: string; name: string; text: string; kind: "text" | "quick"; at: number };
 
 // A correct slap waiting to be compared. `ms` is the reaction time we trust, `at` is when it arrived.
 type SlapAttempt = { seat: number; ms: number; at: number };
@@ -40,6 +44,7 @@ type Room = {
   autoStartAt: number | null;
   lobbyReturnTimer: ReturnType<typeof setTimeout> | null; // public games go back to the lobby after the results
   lobbyReturnAt: number | null;
+  chat: ChatMessage[]; // the last 50 messages, so people who join or refresh can catch up
 };
 
 type JoinRequest = { roomId: string; token: string; name?: string; spectate?: boolean };
@@ -59,12 +64,22 @@ const TURN_TIME_MS = 10_000; // public tables: you have 10 seconds to play, then
 const AUTO_START_MS = 5_000; // public tables: start 5 seconds after every seat is filled
 const RESULTS_MS = 25_000; // public tables: show the results for 25 seconds, then back to the lobby
 
+// Chat. Private tables (friends) get full text chat; public tables (strangers) get preset phrases only.
+const QUICK_CHAT = ["Nice slap!", "GG", "Unlucky", "One more?", "Didn't see that 😂", "Too fast!", "Good luck!", "Oops"]; // same list as client/src/chat.ts
+const CHAT_MAX_LENGTH = 200;
+const CHAT_HISTORY = 50;
+const CHAT_LIMIT = 5; // slow-mode: at most 5 messages...
+const CHAT_WINDOW_MS = 10_000; // ...every 10 seconds, per person
+const LINK_PATTERN = /(https?:\/\/|www\.|\b[a-z0-9-]+\.(com|net|org|gg|io|ly|co|xyz|me|tv|app|link|ru)\b)/i;
+let nextChatId = 1;
+
 // Block offensive names (it also catches tricks like swapping letters for numbers).
 // "Dick" is allowed because it's a real name (short for Richard).
 const nameFilter = new RegExpMatcher({
   ...englishDataset.removePhrasesIf((p) => p.metadata?.originalWord === "dick").build(),
   ...englishRecommendedTransformers,
 });
+const chatCensor = new TextCensor().setStrategy(asteriskCensorStrategy()); // stars out bad words in chat
 
 const rooms = new Map<string, Room>();
 
@@ -95,6 +110,7 @@ function makeRoom(isPublic: boolean): Room {
     autoStartAt: null,
     lobbyReturnTimer: null,
     lobbyReturnAt: null,
+    chat: [],
   };
   rooms.set(room.id, room);
   deleteIfEmpty(room, 5 * 60_000); // clean up if nobody joins within 5 minutes
@@ -529,7 +545,7 @@ io.on("connection", (socket) => {
       if (!name || !name.trim()) return reply({ ok: false });
       if (nameFilter.hasMatch(name)) return reply({ ok: false, error: "Please choose a different name." });
 
-      person = { id: randomUUID(), token, name: name.trim().slice(0, 16), socketId: socket.id, ping: rtt };
+      person = { id: randomUUID(), token, name: name.trim().slice(0, 16), socketId: socket.id, ping: rtt, chatTimes: [] };
       const canSit = !spectate && room.phase === "lobby" && room.players.length < room.maxPlayers;
       if (canSit) {
         room.players.push(person);
@@ -545,6 +561,7 @@ io.on("connection", (socket) => {
     socket.join(room.id);
     reply({ ok: true, you: person.id });
     sendRoom(room);
+    socket.emit("chatHistory", room.chat); // catch up on the conversation
   });
 
   // A spectator wants to move into an open seat (lobby only)
@@ -719,6 +736,42 @@ io.on("connection", (socket) => {
     if (now - (person.lastEmoteAt ?? 0) < EMOTE_COOLDOWN_MS) return; // too soon: ignore
     person.lastEmoteAt = now;
     io.to(room.id).emit("emote", { seat, emoji });
+  });
+
+  // Someone sent a chat message: either typed text (private tables) or a quick phrase (any table)
+  socket.on("chat", (data: { text?: unknown; quick?: unknown }, reply?: (res: { ok: boolean; error?: string }) => void) => {
+    const answer = (res: { ok: boolean; error?: string }) => typeof reply === "function" && reply(res);
+    const room = currentRoom;
+    const person = me;
+    if (!room || !person || !data) return answer({ ok: false });
+
+    let text: string;
+    let kind: ChatMessage["kind"];
+    if (typeof data.quick === "number" && Number.isInteger(data.quick) && QUICK_CHAT[data.quick]) {
+      text = QUICK_CHAT[data.quick];
+      kind = "quick";
+    } else if (typeof data.text === "string") {
+      if (room.isPublic) return answer({ ok: false, error: "Public tables use quick chat only." });
+      text = data.text.replace(/\s+/g, " ").trim().slice(0, CHAT_MAX_LENGTH);
+      if (!text) return answer({ ok: false });
+      if (LINK_PATTERN.test(text)) return answer({ ok: false, error: "Links aren't allowed in chat." });
+      text = chatCensor.applyTo(text, nameFilter.getAllMatches(text)); // star out bad words
+      kind = "text";
+    } else {
+      return answer({ ok: false });
+    }
+
+    // Slow-mode: at most 5 messages every 10 seconds
+    const now = Date.now();
+    person.chatTimes = person.chatTimes.filter((t) => now - t < CHAT_WINDOW_MS);
+    if (person.chatTimes.length >= CHAT_LIMIT) return answer({ ok: false, error: "Slow down a little." });
+    person.chatTimes.push(now);
+
+    const message: ChatMessage = { id: nextChatId++, personId: person.id, name: person.name, text, kind, at: now };
+    room.chat.push(message);
+    if (room.chat.length > CHAT_HISTORY) room.chat.shift();
+    io.to(room.id).emit("chat", message);
+    answer({ ok: true });
   });
 
   // A player gave up: same as leaving, so their cards go under the pile

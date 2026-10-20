@@ -207,6 +207,8 @@
 .ot-empty { padding: 22px; border-radius: 18px; border: 1px dashed var(--line-2); text-align: center; display: flex; flex-direction: column; gap: 6px; }
 .ot-empty-title { margin: 0; font-weight: 700; font-size: 16px; }
 
+.over-chat { width: 100%; max-width: 860px; margin: 8px auto 0; }
+
 /* ---------- Table size picker (lobby) ---------- */
 .players-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 16px; margin-bottom: 14px; }
 .players-head .section-title { margin: 0; }

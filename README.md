@@ -25,6 +25,7 @@ ERS Online is a real-time multiplayer version. One person creates a table, share
 - **Fair under lag:** slaps are judged by reaction time, so a player on slow Wi-Fi isn't penalized (see below)
 - **Memory matters:** only the top 3 cards of the pile are shown, and won cards keep their order, so keeping track pays off
 - **Built for phones too:** tap anywhere on the table to slap, a small vibration on Android, add-to-home-screen support, and a layout that resizes to fit, tested from small iPhones to large monitors
+- **Chat:** typed chat on private tables, quick phrases only on public tables, with bad words starred out, links blocked, slow-mode, and mute
 - **Polish:** card and slap animations, sound effects with a remembered mute, emotes, a host transfer, a How to play guide, and link previews when you text someone a game link
 - **Reconnects:** refreshing or briefly losing signal keeps your seat for 30 seconds
 

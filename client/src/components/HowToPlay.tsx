@@ -192,6 +192,18 @@ export default function HowToPlay({ open, onClose, settings }: Props) {
         </section>
 
         <section>
+          <h3>Chat</h3>
+          <ul className="htp-list">
+            <li>
+              On <b>private tables</b> (friends with the link), you can type messages. On <b>public tables</b>, chat is limited to quick
+              phrases like "Nice slap!" and "GG".
+            </li>
+            <li>Bad words are starred out and links are blocked. Tap someone's name in the chat to mute them.</li>
+            <li>Pressing Enter sends your message and hands the keyboard back to the game, so Space slaps right away.</li>
+          </ul>
+        </section>
+
+        <section>
           <h3>Emotes</h3>
           <p>
             Tap the <b>😀</b> button to react with 😂 🔥 😤 💀 👏 or 🤡. Everyone at the table sees it pop up by your seat. On a computer, the

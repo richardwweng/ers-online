@@ -8,6 +8,7 @@ import JoinScreen from "./JoinScreen";
 import Lobby from "./Lobby";
 import GameOver from "./GameOver";
 import type { JoinReply, RoomState } from "../types";
+import { ChatContext, useChatState } from "../chat";
 import "./Pages.css";
 
 type Intent = "play" | "watch";
@@ -43,6 +44,7 @@ export default function Game() {
   const [room, setRoom] = useState<RoomState | null>(null);
   const [replaced, setReplaced] = useState(false); // this game was opened in another tab
   const [kicked, setKicked] = useState(false); // the host removed us
+  const chat = useChatState(); // messages and mutes, shared by the lobby, table and results
 
   // Update whenever the server sends new room info
   useEffect(() => {
@@ -167,14 +169,13 @@ export default function Game() {
   if (!room) return loading;
 
   // After a game: winner, stats, play again
+  let screen: ReactNode;
   if (room.phase === "finished" && room.game) {
-    return <GameOver room={room} game={room.game} myId={myId} onLeave={leave} />;
+    screen = <GameOver room={room} game={room.game} myId={myId} onLeave={leave} />;
+  } else if (room.phase === "playing" && room.game) {
+    screen = <Table room={room} game={room.game} myId={myId} />; // during a game: the table
+  } else {
+    screen = <Lobby room={room} myId={myId} onLeave={leave} />;
   }
-
-  // During a game: the table
-  if (room.phase === "playing" && room.game) {
-    return <Table room={room} game={room.game} myId={myId} />;
-  }
-
-  return <Lobby room={room} myId={myId} onLeave={leave} />;
+  return <ChatContext.Provider value={chat}>{screen}</ChatContext.Provider>;
 }
